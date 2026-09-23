@@ -34,11 +34,27 @@ android {
     }
 
     signingConfigs {
+        val storeFileProp = project.findProperty("RELEASE_STORE_FILE")?.toString()
+        val hasRealSigning = !storeFileProp.isNullOrBlank() && file(storeFileProp).exists()
+
         create("release") {
-            storeFile = file(project.property("RELEASE_STORE_FILE") as String)
-            storePassword = project.property("RELEASE_STORE_PASSWORD") as String
-            keyAlias = project.property("RELEASE_KEY_ALIAS") as String
-            keyPassword = project.property("RELEASE_KEY_PASSWORD") as String
+            if (hasRealSigning) {
+                storeFile = file(storeFileProp!!)
+                storePassword = project.property("RELEASE_STORE_PASSWORD") as String
+                keyAlias = project.property("RELEASE_KEY_ALIAS") as String
+                keyPassword = project.property("RELEASE_KEY_PASSWORD") as String
+            } else {
+                // 干净环境（CI / 新 clone）下退化为 debug 签名，保证 assembleRelease 可直接出可安装包
+                val debugKeystore = File(
+                    System.getProperty("user.home"), ".android/debug.keystore"
+                )
+                if (debugKeystore.exists()) {
+                    storeFile = debugKeystore
+                    storePassword = "android"
+                    keyAlias = "androiddebugkey"
+                    keyPassword = "android"
+                }
+            }
         }
     }
 
@@ -46,7 +62,15 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
+            val hasRealSigning = !project.findProperty("RELEASE_STORE_FILE")
+                ?.toString().isNullOrBlank() &&
+                file(project.property("RELEASE_STORE_FILE") as String).exists()
+            signingConfig = if (hasRealSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                println("WARN: release keystore not found, falling back to debug signing")
+                signingConfigs.getByName("debug")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -102,7 +126,7 @@ dependencies {
     // Material & AndroidX
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.annotation:annotation:1.9.1")
-    implementation("androidx.activity:activity-compose:1.4.0")
+    implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.documentfile:documentfile:1.0.1")
 
     // Compose

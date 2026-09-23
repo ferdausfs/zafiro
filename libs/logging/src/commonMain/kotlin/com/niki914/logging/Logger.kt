@@ -3,7 +3,8 @@ package com.niki914.logging
 import com.niki914.logging.Logger.enableScope
 import com.niki914.logging.Logger.install
 import com.niki914.logging.Logger.level
-import java.util.concurrent.CopyOnWriteArraySet
+import kotlin.concurrent.atomics.AtomicReference
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 /**
  * 分级日志门面。
@@ -25,7 +26,9 @@ object Logger {
      */
     private var isDebugProvider: () -> Boolean = { true }
 
-    private val scopes = CopyOnWriteArraySet<String>()
+    // KMP commonMain 不允许直接使用 java.util.concurrent，改用 stdlib 原子引用保存不可变集合快照
+    @OptIn(ExperimentalAtomicApi::class)
+    private val scopesRef = AtomicReference<Set<String>>(emptySet())
     private var backend: Backend = defaultBackend
 
     /** 注册 debug 构建判定源。 */
@@ -40,15 +43,24 @@ object Logger {
 
     /** 添加 scope 规则：精确 TAG（如 "LLMController"）或尾部带 `*` 的前缀（如 "nexus.*"）。 */
     fun enableScope(scope: String) {
-        scopes.add(scope)
+        @OptIn(ExperimentalAtomicApi::class)
+        while (true) {
+            val cur = scopesRef.load()
+            if (scopesRef.compareAndSet(cur, cur + scope)) return
+        }
     }
 
     fun disableScope(scope: String) {
-        scopes.remove(scope)
+        @OptIn(ExperimentalAtomicApi::class)
+        while (true) {
+            val cur = scopesRef.load()
+            if (scopesRef.compareAndSet(cur, cur - scope)) return
+        }
     }
 
     fun clearScopes() {
-        scopes.clear()
+        @OptIn(ExperimentalAtomicApi::class)
+        scopesRef.store(emptySet())
     }
 
     fun v(tag: String, msg: String) {
@@ -88,6 +100,8 @@ object Logger {
     }
 
     private fun scopeAllowed(tag: String): Boolean {
+        @OptIn(ExperimentalAtomicApi::class)
+        val scopes = scopesRef.load()
         if (scopes.isEmpty()) return true
         return scopes.any { scope ->
             if (scope.endsWith("*")) {

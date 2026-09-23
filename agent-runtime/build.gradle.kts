@@ -35,6 +35,10 @@ android {
 chaquopy {
     defaultConfig {
         version = "3.11"
+        // buildPython 必须与设备端 Python 版本一致（Chaquopy 17 强校验 3.11）
+        buildPython = listOf(
+            System.getenv("BUILD_PYTHON") ?: "python3.11"
+        )
         pip {
             install("requests==2.34.2")
             install("beautifulsoup4==4.15.0")
