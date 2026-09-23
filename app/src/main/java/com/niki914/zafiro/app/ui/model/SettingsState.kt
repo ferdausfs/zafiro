@@ -90,6 +90,7 @@ private fun settingsSections(): List<SettingsSectionDefinition> {
             groups = listOf(
                 ZafiroSettingsGroup.Takeover,
                 ZafiroSettingsGroup.ExecutionRules,
+                ZafiroSettingsGroup.Automation,
             ),
         ),
         SettingsSectionDefinition(

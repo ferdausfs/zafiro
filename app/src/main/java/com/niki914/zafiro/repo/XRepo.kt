@@ -48,6 +48,7 @@ object XRepo {
     val web: WebSettingsApi = WebSettingsApi()
     val executionRules: ExecutionRulesApi = ExecutionRulesApi(this)
     val takeoverRules: TakeoverRulesApi = TakeoverRulesApi(this)
+    val automation: AutomationApi = AutomationApi(this)
     val agents: AgentApi = AgentApi(this)
     val skills: SkillApi = SkillApi(this)
     val storage: StorageApi = StorageApi(this)

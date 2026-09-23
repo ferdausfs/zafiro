@@ -123,6 +123,11 @@ fun SettingsDetailPageContent(
         return
     }
 
+    if (group == ZafiroSettingsGroup.Automation) {
+        AutomationSettingsContent()
+        return
+    }
+
     if (group == ZafiroSettingsGroup.AgentPlan) {
         TODOPageContent()
         return

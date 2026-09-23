@@ -12,6 +12,7 @@ object StoreDescriptorRegistry {
     const val TOOLS_PY_ID = "tools.py"
     const val TOOLS_MCP_SERVERS_ID = "tools.mcp.servers"
     const val RULES_EXECUTION_ID = "rules.execution"
+    const val AUTOMATION_TRIGGERS_ID = "automation.triggers"
     const val RULES_TAKEOVER_ID = "rules.takeover"
     const val APP_STATE_ID = "app.state"
     const val AGENT_CONFIG_PREFIX = "agent.config."
@@ -49,6 +50,11 @@ object StoreDescriptorRegistry {
             RULES_EXECUTION_ID,
             "settings/rules/execution_rules.json",
             """{"rules":[]}"""
+        ),
+        StoreDescriptor(
+            AUTOMATION_TRIGGERS_ID,
+            "settings/automation/triggers.json",
+            """{"triggers":[]}"""
         ),
         StoreDescriptor(
             RULES_TAKEOVER_ID,

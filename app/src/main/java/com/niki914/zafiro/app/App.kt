@@ -9,6 +9,7 @@ import com.niki914.logging.Logger
 import com.niki914.permission.Permission
 import com.niki914.permission.PermissionState
 import com.niki914.xposed.api.util.ContextProvider
+import com.niki914.zafiro.app.automation.AutomationHub
 import com.niki914.zafiro.app.conversation.ConversationPersister
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.overlay.ToolPermissionOverlay
@@ -62,6 +63,9 @@ class App : Application() {
         applicationScope.launch {
             PyRuntime.warmUp()
         }
+
+        // 主动自动化中枢：事件源 → 触发器匹配 → Agent 唤醒（主进程专属）
+        AutomationHub.init(applicationContext, applicationScope)
 
         ToolPermissionCoordinator.backgroundConfirmationHandler = { request ->
             handleBackgroundConfirmation(this, request)
