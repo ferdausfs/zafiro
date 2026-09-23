@@ -162,6 +162,19 @@ private class FullTextProjector(
                 listOf(LlmTextFrame(renderSegments(), isFirst = false, isFinal = false))
             }
 
+            is LlmStreamEvent.ModelSwitched -> {
+                // 模型回退切换提示（瞬时）：作为状态行展示，流恢复后自然消失
+                segments += RenderSegment.Retrying(
+                    LlmStreamEvent.Retrying(
+                        attempt = 1,
+                        maxAttempts = 1,
+                        delayMs = 0,
+                        reason = "${event.fromModel} → ${event.toModel}",
+                    )
+                )
+                listOf(LlmTextFrame(renderSegments(), isFirst = false, isFinal = false))
+            }
+
             is LlmStreamEvent.Completed ->
                 listOf(LlmTextFrame(renderSegments(), isFirst = false, isFinal = true))
         }
@@ -275,6 +288,18 @@ private class ChunkTextProjector(
 
             is LlmStreamEvent.Retrying -> {
                 appendRetryLine(event)
+                listOf(LlmTextFrame(fullText.toString(), isFirst = false, isFinal = false))
+            }
+
+            is LlmStreamEvent.ModelSwitched -> {
+                appendRetryLine(
+                    LlmStreamEvent.Retrying(
+                        attempt = 1,
+                        maxAttempts = 1,
+                        delayMs = 0,
+                        reason = "${event.fromModel} → ${event.toModel}",
+                    )
+                )
                 listOf(LlmTextFrame(fullText.toString(), isFirst = false, isFinal = false))
             }
 

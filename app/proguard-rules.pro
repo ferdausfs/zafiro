@@ -111,3 +111,6 @@
     java.lang.Object writeReplace();
     java.lang.Object readResolve();
 }
+
+# pdfbox-android：JPEG2000 解码器为可选依赖（JPX 滤镜），缺省不打包，忽略即可
+-dontwarn com.gemalto.jp2.**

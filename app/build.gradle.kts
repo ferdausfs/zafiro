@@ -23,8 +23,8 @@ android {
         applicationId = "com.niki914.zafiro"
         minSdk = 26
         targetSdk = 34
-        versionName = "1.4.0"
-        versionCode = 12
+        versionName = "1.5.0"
+        versionCode = 13
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
@@ -126,6 +126,9 @@ dependencies {
 
     // Third-party UI
     implementation("com.mikepenz:multiplatform-markdown-renderer-m3:0.37.0")
+
+    // 文档解析（Feature: Universal File Upload）：PDF 文本提取（纯 Java 实现，Android 兼容）
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
 
     // Material & AndroidX
     implementation("com.google.android.material:material:1.12.0")

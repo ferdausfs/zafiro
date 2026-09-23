@@ -5,7 +5,10 @@ import com.niki914.okia.Okia
 import com.niki914.okia.TurnOptions
 import com.niki914.okia.conversation.Conversation
 import com.niki914.okia.conversation.SessionSnapshot
+import com.niki914.okia.error.LLMError
+import com.niki914.okia.error.LLMErrorCode
 import com.niki914.okia.error.RetryPolicy
+import com.niki914.okia.event.TurnEvent
 import com.niki914.okia.hooks.Hooks
 import com.niki914.okia.hooks.SerializationHolder
 import com.niki914.okia.loop.TurnResult
@@ -390,7 +393,7 @@ object LLMController {
         images: List<ContentBlock.Image> = emptyList(),
     ): Flow<LlmStreamEvent> = channelFlow {
         try {
-            val state = try {
+            var state: RuntimeState? = try {
                 refresh()
                 runtimeState
             } catch (throwable: Throwable) {
@@ -464,59 +467,113 @@ object LLMController {
                 } else {
                     query
                 }
+                // 模型回退链（Feature: Intelligent Model Fallback）：主模型失败
+                // （限流/过载/上下文超限/配额）且自动重试耗尽 → 按优先级切换下一
+                // 配置，同一回合继续执行；历史经会话树无缝携带，零打断
+                val fallbackChain = loadFallbackChain()
+                var fallbackIndex = -1
+
                 // 终态以返回值承载（TurnResult）；onEvent 只承担流式中间过程。
-                val result = try {
-                    state.okia.send(
-                        text = effectiveQuery,
-                        images = images,
-                        options = TurnOptions(systemPrompt = state.snapshot.config.finalSystemPrompt),
-                    ) { event ->
-                        val mapped = LlmStreamEventMapper.map(event, startedAtMs)
-                        mapped?.let {
-                            AgentStatusHolder.onEvent(it)
-                            if (!firstFrameLogged && it is LlmStreamEvent.TextDelta) {
-                                firstFrameLogged = true
+                var result: TurnResult? = null
+                while (true) {
+                    val current = state ?: break
+                    val remainingFallbacks = fallbackChain.size - fallbackIndex - 1
+                    result = try {
+                        current.okia.send(
+                            text = effectiveQuery,
+                            images = images,
+                            options = TurnOptions(systemPrompt = current.snapshot.config.finalSystemPrompt),
+                        ) { event ->
+                            // 回退将接管：抑制本 Error 事件（UI 停留生成态不闪错），
+                            // send 返回后由下方终态处理换配置重发
+                            if (event is TurnEvent.TurnFailed &&
+                                fallbackEligible(event.error, remainingFallbacks)
+                            ) {
                                 Logger.i(
                                     LOG_TAG,
-                                    "first frame elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
-                                            "charsPerSecond=${it.charsPerSecond}"
+                                    "turn failed, fallback pending model=${current.snapshot.config.model} " +
+                                            "code=${event.error.code} remaining=$remainingFallbacks"
                                 )
+                                return@send
                             }
-                            if (it is LlmStreamEvent.Error && !streamErrorReported) {
-                                Logger.e(
-                                    LOG_TAG,
-                                    "stream error stage=session_event code=${it.code} " +
-                                            "errorType=${it.throwable?.eventTypeName() ?: "OkiaEvent"} " +
-                                            "message=${it.message} " +
-                                            "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
-                                )
+                            val mapped = LlmStreamEventMapper.map(event, startedAtMs)
+                            mapped?.let {
+                                AgentStatusHolder.onEvent(it)
+                                if (!firstFrameLogged && it is LlmStreamEvent.TextDelta) {
+                                    firstFrameLogged = true
+                                    Logger.i(
+                                        LOG_TAG,
+                                        "first frame elapsedMs=${System.currentTimeMillis() - startedAtMs} " +
+                                                "charsPerSecond=${it.charsPerSecond}"
+                                    )
+                                }
+                                if (it is LlmStreamEvent.Error && !streamErrorReported) {
+                                    Logger.e(
+                                        LOG_TAG,
+                                        "stream error stage=session_event code=${it.code} " +
+                                                "errorType=${it.throwable?.eventTypeName() ?: "OkiaEvent"} " +
+                                                "message=${it.message} " +
+                                                "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
+                                    )
+                                }
+                                emit(it)
                             }
-                            emit(it)
                         }
-                    }
-                } catch (throwable: Throwable) {
-                    if (throwable is CancellationException) {
-                        throw throwable
-                    }
-                    // OKIA 失败走 TurnResult 不抛；此处捕获契约违例（并发 send /
-                    // closed 等），转错误事件保持 UI 行为（D9）
-                    if (!streamErrorReported) {
-                        Logger.e(
-                            LOG_TAG,
-                            "stream error stage=send code=${throwable.toUserErrorCode()} " +
-                                    "errorType=${throwable.eventTypeName()} " +
-                                    "message=${throwable.message} " +
-                                    "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
-                        )
-                        emit(
-                            LlmStreamEvent.Error(
-                                message = throwable.message?.trim()?.ifEmpty { null },
-                                throwable = throwable,
-                                code = throwable.toUserErrorCode(),
+                    } catch (throwable: Throwable) {
+                        if (throwable is CancellationException) {
+                            throw throwable
+                        }
+                        // OKIA 失败走 TurnResult 不抛；此处捕获契约违例（并发 send /
+                        // closed 等），转错误事件保持 UI 行为（D9）
+                        if (!streamErrorReported) {
+                            Logger.e(
+                                LOG_TAG,
+                                "stream error stage=send code=${throwable.toUserErrorCode()} " +
+                                        "errorType=${throwable.eventTypeName()} " +
+                                        "message=${throwable.message} " +
+                                        "elapsedMs=${System.currentTimeMillis() - startedAtMs}"
                             )
-                        )
+                            emit(
+                                LlmStreamEvent.Error(
+                                    message = throwable.message?.trim()?.ifEmpty { null },
+                                    throwable = throwable,
+                                    code = throwable.toUserErrorCode(),
+                                )
+                            )
+                        }
+                        null
                     }
-                    null
+
+                    val failedError = (result as? TurnResult.Failed)?.error
+                    if (failedError == null || !fallbackEligible(failedError, remainingFallbacks)) {
+                        break
+                    }
+
+                    val fromModel = current.snapshot.config.model
+                    val next = fallbackChain[fallbackIndex + 1]
+                    val nextState = applyFallbackConfig(current, next)
+                    if (nextState == null) {
+                        Logger.w(
+                            LOG_TAG,
+                            "fallback switch to model=${next.config.model} failed, " +
+                                    "reporting original error"
+                        )
+                        break
+                    }
+                    fallbackIndex += 1
+                    state = nextState
+                    Logger.i(
+                        LOG_TAG,
+                        "model fallback applied from=$fromModel to=${next.config.model} " +
+                                "code=${failedError.code} step=$fallbackIndex"
+                    )
+                    emit(
+                        LlmStreamEvent.ModelSwitched(
+                            fromModel = fromModel,
+                            toModel = next.config.model,
+                            reason = failedError.message,
+                        )
+                    )
                 }
                 // 终态兜底：事件流中间过程未覆盖的失败（防御路径，正常事件已含
                 // TurnFailed 映射），按返回值补发一条错误事件
@@ -649,6 +706,135 @@ object LLMController {
             LlmProtocol.OpenAiChatCompletions -> "https://api.openai.com/v1/chat/completions"
             LlmProtocol.OpenAiResponses -> "https://api.openai.com/v1/responses"
             LlmProtocol.AnthropicMessages -> "https://api.anthropic.com/v1/messages"
+        }
+    }
+
+    // ── 模型回退（Feature: Intelligent Model Fallback） ─────────────────
+
+    /** 读取网关提供的回退链（已按优先级排序、已剔除 active/无效条目）；失败按无回退处理。 */
+    private suspend fun loadFallbackChain(): List<FallbackCandidate> {
+        return try {
+            RuntimeEnvironment.awaitSettingsGateway().fallbackConfigs().map { rt ->
+                FallbackCandidate(
+                    protocol = LlmProtocol.fromWire(rt.protocol),
+                    config = ResolvedLlmConfig(
+                        endpoint = rt.endpoint,
+                        apiKey = rt.apiKey,
+                        model = rt.model,
+                        baseSystemPrompt = rt.prompt,
+                        finalSystemPrompt = rt.prompt,
+                        proxy = rt.proxy,
+                        supportsImages = rt.supportsImages,
+                        idleTimeoutSeconds = rt.idleTimeoutSeconds,
+                        retryMaxAttempts = rt.retryMaxAttempts,
+                        thinkingLevel = rt.thinkingLevel.takeIf(String::isNotBlank)
+                            ?.let(ThinkingLevel::fromWire),
+                    ),
+                )
+            }
+        } catch (throwable: Throwable) {
+            if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "fallback chain load failed reason=${throwable.message}")
+            emptyList()
+        }
+    }
+
+    /**
+     * 错误是否值得回退：限流（429）、过载/服务端错误（5xx）、上下文超限（token
+     * limit）、配额不足；RetryExhausted 按底层状态码/原文再判。鉴权失败不回退
+     * （换模型救不了坏 key，快速失败让用户及时看到）。
+     */
+    private fun fallbackEligible(error: LLMError, remaining: Int): Boolean {
+        if (remaining <= 0) return false
+        return when (error.code) {
+            LLMErrorCode.RateLimit,
+            LLMErrorCode.Overloaded,
+            LLMErrorCode.Quota,
+            LLMErrorCode.ContextOverflow,
+            -> true
+
+            LLMErrorCode.RetryExhausted -> {
+                val status = error.statusCode
+                (status != null && (status == 429 || status in 500..599)) ||
+                        Regex(
+                            "(?i)rate limit|too many requests|\\b429\\b|\\b5\\d{2}\\b|" +
+                                    "overloaded|insufficient_quota|context (?:length|too long)"
+                        ).containsMatchIn(error.message)
+            }
+
+            else -> false
+        }
+    }
+
+    /**
+     * 把会话切到回退配置：先回退失败回合的 User 消息（残留的中间产物一并
+     * 退出历史），再换配置——同协议原地热更新；跨协议导出树重建实例
+     * （P1 #3 机制）。返回切换后的 RuntimeState；失败返回 null（调用方按
+     * 原错误走终态）。
+     */
+    private suspend fun applyFallbackConfig(
+        state: RuntimeState,
+        candidate: FallbackCandidate,
+    ): RuntimeState? {
+        try {
+            val conversation = state.okia.conversation.value
+            val lastUserIndex = conversation.history.indexOfLast { it.message is Message.User }
+            var dropInstance = false
+            when {
+                // 失败 User 不在栈底：回退到其前一条（该回合全部残留退出历史）
+                lastUserIndex > 0 ->
+                    state.okia.rewind(conversation.history[lastUserIndex - 1].id)
+
+                // User 是第一条（库不支持 rewind 到 root）：整实例无历史可保留，丢弃重建
+                lastUserIndex == 0 -> dropInstance = true
+
+                // 树中竟无 User（理论不可达）：保守按重建处理
+                else -> dropInstance = true
+            }
+
+            val mergedConfig = candidate.config.copy(
+                // 最终提示词沿用本次 refresh 的组装结果（全局 prompt/记忆不变）
+                finalSystemPrompt = state.snapshot.config.finalSystemPrompt,
+            )
+
+            return if (!dropInstance && sessionProtocol == candidate.protocol) {
+                state.okia.update {
+                    endpoint = mergedConfig.endpoint.ifBlank {
+                        protocolDefaultEndpointFallback(candidate.protocol)
+                    }
+                    apiKey = mergedConfig.apiKey
+                    model = mergedConfig.model
+                    idleTimeoutSeconds = mergedConfig.idleTimeoutSeconds ?: NO_IDLE_TIMEOUT_SECONDS
+                    retryPolicy = RetryPolicy(maxAttempts = mergedConfig.retryMaxAttempts)
+                    thinkingLevel = mergedConfig.thinkingLevel
+                    proxy = mergedConfig.proxy
+                    supportsImages = imageLoader != null && mergedConfig.supportsImages
+                }
+                state.copy(snapshot = state.snapshot.copy(config = mergedConfig))
+            } else {
+                // 跨协议 / 实例重建：导出（已回退的）树，新协议实例无缝接手
+                val carried = if (dropInstance) null else state.okia.export()
+                val newSession = obtainSession(
+                    protocol = candidate.protocol,
+                    config = mergedConfig,
+                    restore = carried,
+                    forceNew = true,
+                )
+                val nextState = state.copy(
+                    okia = newSession,
+                    snapshot = state.snapshot.copy(config = mergedConfig),
+                )
+                runtimeState = nextState
+                nextState
+            }
+        } catch (throwable: Throwable) {
+            if (throwable is CancellationException) throw throwable
+            Logger.e(
+                LOG_TAG,
+                "apply fallback failed model=${candidate.config.model} " +
+                        "reason=${throwable.message}"
+            )
+            return null
         }
     }
 
@@ -936,3 +1122,9 @@ object LLMController {
 
     private class LlmConfigRequiredException : IllegalStateException("LLM config is required")
 }
+
+/** 回退链候选：目标协议 + 解析后的运行时配置（Feature: Model Fallback）。 */
+internal data class FallbackCandidate(
+    val protocol: LlmProtocol,
+    val config: ResolvedLlmConfig,
+)

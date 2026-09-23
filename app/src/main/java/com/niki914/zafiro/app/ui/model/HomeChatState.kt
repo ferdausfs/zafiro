@@ -1,15 +1,20 @@
 package com.niki914.zafiro.app.ui.model
 
 import androidx.lifecycle.viewModelScope
+import android.net.Uri
 import com.niki914.logging.Logger
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
 import com.niki914.uikit.base.ComposeMVIViewModel
+import com.niki914.xposed.api.util.ContextProvider
+import com.niki914.zafiro.app.automation.BackgroundTaskHub
 import com.niki914.zafiro.app.conversation.ConversationFormatter
 import com.niki914.zafiro.app.conversation.ConversationRecord
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.conversation.ForkKind
+import com.niki914.zafiro.app.document.DocumentCodec
+import com.niki914.zafiro.app.document.DocumentCodec.IngestResult
 import com.niki914.zafiro.chat.LLMController
 import com.niki914.zafiro.chat.LlmErrorCode
 import com.niki914.zafiro.chat.LlmStreamEvent
@@ -18,8 +23,11 @@ import com.niki914.zafiro.repo.XRepo
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import java.util.UUID
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.launch
 
 internal interface HomeConversationStore {
@@ -127,6 +135,7 @@ data class HomeChatTurn(
     val id: Long,
     val userText: String,
     val images: List<HomeChatImage> = emptyList(),
+    val documents: List<HomeChatDocument> = emptyList(),
     val blocks: List<HomeChatBlock> = emptyList(),
 )
 
@@ -146,10 +155,27 @@ data class HomeChatImage(
     }
 }
 
+/**
+ * 用户消息附带的文档（Feature: Universal File Upload）。
+ * ingest 提取文本落盘 document_cache，path 供 Agent execute_python 读全文；
+ * UI 只展示名字与大小。path 为空串 = 重挂场景仅知名字（任务重连）。
+ */
+data class HomeChatDocument(
+    val id: String,
+    val path: String,
+    val name: String,
+    val mime: String = "",
+    val sizeBytes: Long = 0L,
+    val textLength: Int = 0,
+    val truncated: Boolean = false,
+)
+
 data class HomeChatUiState(
     val input: String = "",
     /** 待发送图片（composer 上方图片条）。send 时移入新 turn.images 并清空。 */
     val pendingImages: List<HomeChatImage> = emptyList(),
+    /** 待发送文档（Feature: Universal File Upload）。send 时移入新 turn.documents 并清空。 */
+    val pendingDocuments: List<HomeChatDocument> = emptyList(),
     val turns: List<HomeChatTurn> = emptyList(),
     val isGenerating: Boolean = false,
     val isLoadingConversation: Boolean = false,
@@ -178,6 +204,7 @@ data class HomeChatUiState(
  */
 fun HomeChatUiState.withClearedTransient() = copy(
     pendingImages = emptyList(),
+    pendingDocuments = emptyList(),
     expandedToolRuns = emptySet(),
     expandedToolResults = emptySet(),
     expandedThinking = emptySet(),
@@ -193,6 +220,9 @@ sealed interface HomeChatIntent {
     /** 相册选图完成：uri → ingest 落盘 → 加入 pendingImages。失败静默（记日志）。 */
     data class ImageAttached(val uri: String) : HomeChatIntent
     data class ImageRemoved(val id: String) : HomeChatIntent
+    /** 文件选择器完成：uri → 文档 ingest（提文本落盘）→ pendingDocuments。 */
+    data class DocumentAttached(val uri: String) : HomeChatIntent
+    data class DocumentRemoved(val id: String) : HomeChatIntent
     data object StopGenerating : HomeChatIntent
     data object NewConversation : HomeChatIntent
     data class LoadConversation(val id: String) : HomeChatIntent
@@ -217,6 +247,8 @@ internal interface HomeChatRuntime {
     suspend fun historySnapshot(): List<Message>
     /** 相册 URI → ingest 落盘 → path。失败返回 null（静默丢弃）。 */
     suspend fun ingestImage(uri: String): HomeChatImage?
+    /** 文件 URI → 文档 ingest（提文本落盘）。失败返回 null（静默丢弃）。 */
+    suspend fun ingestDocument(uri: String): HomeChatDocument?
 }
 
 private object LlmHomeChatRuntime : HomeChatRuntime {
@@ -245,6 +277,24 @@ private object LlmHomeChatRuntime : HomeChatRuntime {
             path = ingested.path,
         )
     }
+
+    override suspend fun ingestDocument(uri: String): HomeChatDocument? {
+        val context = ContextProvider.await()
+        val codec = DocumentCodec(context)
+        return when (val result = codec.ingestUri(Uri.parse(uri))) {
+            is IngestResult.Ok -> HomeChatDocument(
+                id = UUID.randomUUID().toString(),
+                path = result.document.path,
+                name = result.document.displayName,
+                mime = result.document.mime,
+                sizeBytes = result.document.sizeBytes,
+                textLength = result.document.textLength,
+                truncated = result.document.truncated,
+            )
+
+            is IngestResult.Err -> null
+        }
+    }
 }
 
 class HomeChatViewModel internal constructor(
@@ -260,9 +310,12 @@ class HomeChatViewModel internal constructor(
     private var draftSaveJob: Job? = null
     private var currentConversationId: String? = null
     private var startupRestoreAttempted = false
+    /** 当前在跑的后台任务（BackgroundTaskHub 提交后回填；停止/清理用）。 */
+    private var activeTaskId: String? = null
 
     init {
         restoreLastConversationOnStartup()
+        attachRunningBackgroundTask()
     }
 
     override fun initUiState(): HomeChatUiState {
@@ -275,6 +328,8 @@ class HomeChatViewModel internal constructor(
             HomeChatIntent.Send -> sendCurrentInput()
             is HomeChatIntent.ImageAttached -> attachImage(intent.uri)
             is HomeChatIntent.ImageRemoved -> removeImage(intent.id)
+            is HomeChatIntent.DocumentAttached -> attachDocument(intent.uri)
+            is HomeChatIntent.DocumentRemoved -> removeDocument(intent.id)
             HomeChatIntent.StopGenerating -> stopGenerating()
             HomeChatIntent.NewConversation -> startNewConversation()
             is HomeChatIntent.LoadConversation -> loadConversation(intent.id)
@@ -380,26 +435,76 @@ class HomeChatViewModel internal constructor(
         updateState { copy(pendingImages = pendingImages.filterNot { it.id == id }) }
     }
 
+    /** 文件选择 → 文档 ingest（提文本落盘 document_cache）。失败静默（记日志）。 */
+    private suspend fun attachDocument(uri: String) {
+        if (currentState.isGenerating) return
+        val document = try {
+            runtime.ingestDocument(uri)
+        } catch (throwable: Throwable) {
+            if (throwable is CancellationException) throw throwable
+            Logger.w(LOG_TAG, "document ingest failed uri=$uri error=${throwable.message}")
+            null
+        }
+        if (document != null) {
+            updateState { copy(pendingDocuments = pendingDocuments + document) }
+        }
+    }
+
+    private fun removeDocument(id: String) {
+        updateState { copy(pendingDocuments = pendingDocuments.filterNot { it.id == id }) }
+    }
+
+    /**
+     * 发送 = 提交后台任务（Feature: Asynchronous Background Execution）：
+     * LLMController.stream 的收集跑在 BackgroundTaskHub 应用级 scope（FGS 保活），
+     * 本 VM 只是事件观察者——关掉聊天页/退到桌面任务继续跑，结束后发完成通知。
+     */
     private suspend fun sendCurrentInput() {
         val query = currentState.input.trim()
         val pendingImages = currentState.pendingImages
-        if (query.isBlank() && pendingImages.isEmpty() || currentState.isGenerating) {
+        val pendingDocs = currentState.pendingDocuments
+        if (query.isBlank() && pendingImages.isEmpty() && pendingDocs.isEmpty() ||
+            currentState.isGenerating
+        ) {
             Logger.d(
                 LOG_TAG,
                 "send skipped blank=${query.isBlank()} images=${pendingImages.size} " +
-                        "isGenerating=${currentState.isGenerating}"
+                        "docs=${pendingDocs.size} isGenerating=${currentState.isGenerating}"
             )
             return
         }
-        Logger.i(LOG_TAG, "send requested queryLength=${query.length} images=${pendingImages.size}")
+        Logger.i(
+            LOG_TAG,
+            "send requested queryLength=${query.length} images=${pendingImages.size} " +
+                    "docs=${pendingDocs.size}"
+        )
 
         val turnId = nextTurnId++
         val imageBlocks = pendingImages.map { ContentBlock.Image(it.path, "image/jpeg") }
+        // 文档上下文：提取文本注入查询前方（超长注入预览 + 全文路径，Agent 可自行读取）
+        val documentContext = com.niki914.zafiro.app.document.DocumentContextBuilder.build(
+            pendingDocs.map { doc ->
+                com.niki914.zafiro.app.document.DocumentContextBuilder.DocRef(
+                    path = doc.path,
+                    displayName = doc.name,
+                    mime = doc.mime,
+                    sizeBytes = doc.sizeBytes,
+                )
+            },
+        ) { path ->
+            runCatching { java.io.File(path).readText() }.getOrDefault("")
+        }
+        val effectiveQuery = if (documentContext.isNotBlank()) {
+            "$documentContext\n\n$query"
+        } else {
+            query
+        }
         updateState {
             copy(
                 input = "",
-                // 待发图片移入 turn（UI 展示链路）
+                // 待发附件移入 turn（UI 展示链路）
                 pendingImages = emptyList(),
+                pendingDocuments = emptyList(),
                 // 新回合开始：清除旧错误卡片（瞬态 UI 态，T3 TODO②——
                 // 错误只在当轮显示，下一轮发起即消失）
                 turns = turns.map { turn ->
@@ -408,7 +513,12 @@ class HomeChatViewModel internal constructor(
                             it is HomeChatBlock.Error || it is HomeChatBlock.Retrying
                         },
                     )
-                } + HomeChatTurn(id = turnId, userText = query, images = pendingImages),
+                } + HomeChatTurn(
+                    id = turnId,
+                    userText = query,
+                    images = pendingImages,
+                    documents = pendingDocs,
+                ),
                 isGenerating = true,
                 lastEventName = null,
                 streamEventCount = 0,
@@ -425,13 +535,32 @@ class HomeChatViewModel internal constructor(
 
         streamJob = viewModelScope.launch {
             try {
+                // 会话先就位（Room id 与树 id 对齐），再提交后台任务
                 val conversationId = ensureCurrentConversation(query)
                 conversations.updateDraft(conversationId = conversationId, draftText = "")
+                val prepared = BackgroundTaskHub.prepare(
+                    query = effectiveQuery,
+                    images = imageBlocks,
+                    documentNames = pendingDocs.map { it.name },
+                    conversationId = conversationId,
+                    imagePaths = pendingImages.map { it.path },
+                )
+                activeTaskId = prepared.id
                 Logger.i(
                     LOG_TAG,
-                    "send turn started turnId=$turnId conversationId=$conversationId queryLength=${query.length}"
+                    "send turn started turnId=$turnId conversationId=$conversationId " +
+                            "taskId=${prepared.id} queryLength=${effectiveQuery.length}"
                 )
-                collectLlmStream(turnId = turnId, query = query, images = imageBlocks)
+                collectBackgroundTask(
+                    turnId = turnId,
+                    taskId = prepared.id,
+                    eventsFlow = BackgroundTaskHub.observe(prepared),
+                    startTask = {
+                        BackgroundTaskHub.start(prepared, imageBlocks) { q, images ->
+                            runtime.stream(q, images)
+                        }
+                    },
+                )
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) throw throwable
                 Logger.e(
@@ -445,6 +574,7 @@ class HomeChatViewModel internal constructor(
             } finally {
                 if (streamJob == currentCoroutineContext()[Job]) {
                     streamJob = null
+                    activeTaskId = null
                     updateState { copy(isGenerating = false) }
                 }
             }
@@ -454,6 +584,7 @@ class HomeChatViewModel internal constructor(
     private suspend fun stopGenerating() {
         if (!currentState.isGenerating) return
         runtime.stopCurrentRound()
+        activeTaskId?.let { BackgroundTaskHub.cancel(it) }
         streamJob?.cancel()
         streamJob = null
         finalizeRunningTools()
@@ -462,6 +593,8 @@ class HomeChatViewModel internal constructor(
 
     private fun startNewConversation() {
         Logger.d(LOG_TAG, "start new conversation")
+        activeTaskId?.let { BackgroundTaskHub.cancel(it) }
+        activeTaskId = null
         streamJob?.cancel()
         streamJob = null
         draftSaveJob?.cancel()
@@ -488,25 +621,94 @@ class HomeChatViewModel internal constructor(
         }
     }
 
-    private suspend fun collectLlmStream(turnId: Long, query: String, images: List<ContentBlock.Image> = emptyList()) {
+    /**
+     * 收集后台任务事件（UI 观察者）：事件经 Hub 的 SharedFlow 转发，任务本体
+     * 跑在 Hub scope。VM 退出（screen 销毁）只断观察，不断任务；awaitTask
+     * 保证终态后本函数才返回（isGenerating 复位由调用方 finally 负责）。
+     *
+     * [eventsFlow] + [startTask]：发送路径两段式——先订阅（防首帧事件丢失）
+     * 再经 [startTask] 启动回合；重挂路径不传 startTask，只挂到已运行任务。
+     */
+    private suspend fun collectBackgroundTask(
+        turnId: Long,
+        taskId: String,
+        eventsFlow: Flow<LlmStreamEvent>? = null,
+        startTask: (() -> Unit)? = null,
+    ) {
+        val events = eventsFlow ?: BackgroundTaskHub.events(taskId)
+        if (events == null) {
+            Logger.w(LOG_TAG, "background task events missing taskId=$taskId")
+            return
+        }
         textPacer.reset()
         // Mapper 的 thinking id 跨轮复用（id 0 每轮重新出现），回合开始必须归零
         thinkingPacer.reset()
-        runtime.stream(query, images).collect { event ->
-            val eventName = eventName(event)
-            val eventCount = currentState.streamEventCount + 1
+        coroutineScope {
+            val eventCollector = launch {
+                events.transformWhile { event ->
+                    emit(event)
+                    // 终态（Completed/Error，含 Hub 合成的）到达即停：任务与观察者
+                    // 解耦后，SharedFlow 永不 complete，必须靠终态收束收集
+                    !(event is LlmStreamEvent.Completed || event is LlmStreamEvent.Error)
+                }.collect { event ->
+                    val eventName = eventName(event)
+                    val eventCount = currentState.streamEventCount + 1
+                    updateState {
+                        copy(
+                            lastEventName = eventName,
+                            streamEventCount = eventCount,
+                        )
+                    }
+                    when {
+                        event is LlmStreamEvent.TextDelta -> paceTextDelta(turnId, event)
+                        event is LlmStreamEvent.ThinkingStarted ||
+                                event is LlmStreamEvent.ThinkingEnded ->
+                            paceThinking(turnId, event)
+
+                        else -> applyEvent(turnId = turnId, event = event)
+                    }
+                }
+            }
+            startTask?.invoke()
+        }
+    }
+
+    /**
+     * VM 重建（用户重开聊天页）时重挂仍在跑的后台任务：isGenerating 复位 +
+     * 以任务 query 建新 turn，后续事件自然续流（当前段 TextDelta 全量坐标自对齐）。
+     */
+    private fun attachRunningBackgroundTask() {
+        viewModelScope.launch {
+            // 让位会话恢复流程（restore 决定 turns 基线）
+            delay(600)
+            val running = BackgroundTaskHub.runningTask.value ?: return@launch
+            if (currentState.isGenerating) return@launch
+            Logger.i(LOG_TAG, "attach running task id=${running.id}")
+            val turnId = nextTurnId++
             updateState {
                 copy(
-                    lastEventName = eventName,
-                    streamEventCount = eventCount,
+                    turns = turns + HomeChatTurn(
+                        id = turnId,
+                        userText = running.query,
+                        documents = running.documentNames.map { name ->
+                            HomeChatDocument(id = "doc-attach-$turnId-$name", path = "", name = name)
+                        },
+                    ),
+                    isGenerating = true,
+                    lastEventName = null,
+                    streamEventCount = 0,
                 )
             }
-            when {
-                event is LlmStreamEvent.TextDelta -> paceTextDelta(turnId, event)
-                event is LlmStreamEvent.ThinkingStarted || event is LlmStreamEvent.ThinkingEnded ->
-                    paceThinking(turnId, event)
-
-                else -> applyEvent(turnId = turnId, event = event)
+            try {
+                collectBackgroundTask(turnId = turnId, taskId = running.id)
+            } catch (throwable: Throwable) {
+                if (throwable is CancellationException) throw throwable
+            } finally {
+                if (BackgroundTaskHub.runningTask.value?.id == running.id ||
+                    BackgroundTaskHub.runningTask.value == null
+                ) {
+                    updateState { copy(isGenerating = false, activeThinkingKey = null) }
+                }
             }
         }
     }
@@ -721,6 +923,29 @@ class HomeChatViewModel internal constructor(
                 }
             }
 
+            is LlmStreamEvent.ModelSwitched -> {
+                // 模型回退切换（Feature: Fallback）：复用瞬时 retry 卡片展示提示，
+                // 下一个流事件到达即清除（clearRetrying）
+                Logger.w(
+                    LOG_TAG,
+                    "apply model switch turnId=$turnId from=${event.fromModel} " +
+                            "to=${event.toModel} reason=${event.reason}"
+                )
+                updateTurn(turnId) { turn ->
+                    val withoutStale = turn.copy(
+                        blocks = turn.blocks.filterNot { it is HomeChatBlock.Retrying },
+                    )
+                    withoutStale.copy(
+                        blocks = withoutStale.blocks + HomeChatBlock.Retrying(
+                            attempt = 1,
+                            maxAttempts = 1,
+                            delayMs = 0,
+                            reason = "model fallback: ${event.fromModel} → ${event.toModel}",
+                        ),
+                    )
+                }
+            }
+
             is LlmStreamEvent.Completed -> {
                 Logger.i(
                     LOG_TAG,
@@ -822,6 +1047,10 @@ class HomeChatViewModel internal constructor(
     private suspend fun loadConversation(id: String) {
         val startedAtMs = System.currentTimeMillis()
         Logger.i(LOG_TAG, "load conversation id=$id started")
+        // 后台任务与旧会话绑定：先取消并等回合终结，再换会话实例
+        //（close 撞活跃回合防护，OKIA §8.7 #5）
+        activeTaskId?.let { BackgroundTaskHub.cancelAndJoin(it) }
+        activeTaskId = null
         streamJob?.cancel()
         streamJob = null
         draftSaveJob?.cancel()
@@ -930,7 +1159,24 @@ class HomeChatViewModel internal constructor(
         }
         streamJob = viewModelScope.launch {
             try {
-                collectLlmStream(turnId = newTurnId, query = userText, images = userImages)
+                val prepared = BackgroundTaskHub.prepare(
+                    query = userText,
+                    images = userImages,
+                    documentNames = emptyList(),
+                    conversationId = newConvId,
+                    imagePaths = userImages.map { it.path },
+                )
+                activeTaskId = prepared.id
+                collectBackgroundTask(
+                    turnId = newTurnId,
+                    taskId = prepared.id,
+                    eventsFlow = BackgroundTaskHub.observe(prepared),
+                    startTask = {
+                        BackgroundTaskHub.start(prepared, userImages) { q, images ->
+                            runtime.stream(q, images)
+                        }
+                    },
+                )
             } catch (throwable: Throwable) {
                 if (throwable is CancellationException) throw throwable
                 throwable.message?.let { message ->
@@ -939,6 +1185,7 @@ class HomeChatViewModel internal constructor(
             } finally {
                 if (streamJob == currentCoroutineContext()[Job]) {
                     streamJob = null
+                    activeTaskId = null
                     updateState { copy(isGenerating = false) }
                 }
             }
@@ -999,6 +1246,8 @@ class HomeChatViewModel internal constructor(
             return
         }
 
+        activeTaskId?.let { BackgroundTaskHub.cancelAndJoin(it) }
+        activeTaskId = null
         streamJob?.cancel()
         streamJob = null
         draftSaveJob?.cancel()
@@ -1195,6 +1444,7 @@ class HomeChatViewModel internal constructor(
         LlmStreamEvent.RoundStarted -> "RoundStarted"
         is LlmStreamEvent.TextDelta -> "TextDelta"
         is LlmStreamEvent.Retrying -> "Retrying"
+        is LlmStreamEvent.ModelSwitched -> "ModelSwitched"
         is LlmStreamEvent.ThinkingStarted -> "ThinkingStarted"
         is LlmStreamEvent.ThinkingEnded -> "ThinkingEnded"
         is LlmStreamEvent.ToolRunning -> "ToolRunning"

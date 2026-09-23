@@ -9,6 +9,7 @@ import com.niki914.zafiro.app.R
 import com.niki914.zafiro.repo.LlmConfigsDocument
 import com.niki914.zafiro.repo.ModelCatalogApi
 import com.niki914.zafiro.repo.SavedLlmConfig
+import com.niki914.zafiro.repo.TokenVault
 import com.niki914.zafiro.repo.XRepo
 import com.niki914.zafiro.settings.model.LlmProtocol
 import kotlinx.coroutines.CancellationException
@@ -45,6 +46,8 @@ data class ConfigureUiState(
     val endpointInput: String = ProviderSpecs.default.officialEndpoint,
     val modelInput: String = "",
     val apiKeyInput: String = "",
+    /** 非空 = key 存凭证库（导入 Provider 创建的配置）；编辑时明文输入框为空。 */
+    val apiKeyVaultRef: String = "",
     val apiKeyVisible: Boolean = false,
     /** LlmProtocol.wireId。 */
     val protocolWireId: String = LlmProtocol.Default.wireId,
@@ -403,6 +406,7 @@ class ConfigureViewModel internal constructor(
                 endpointInput = target.endpoint.trim().ifBlank { providerSpec.officialEndpoint },
                 modelInput = target.model,
                 apiKeyInput = target.apiKey,
+                apiKeyVaultRef = target.apiKeyVaultRef,
                 apiKeyVisible = false,
                 protocolWireId = LlmProtocol.fromWire(target.protocol).wireId,
                 thinkingLevelWire = target.thinkingLevel,
@@ -436,9 +440,15 @@ class ConfigureViewModel internal constructor(
         catalogFetchJob = viewModelScope.launch {
             if (!immediate) delay(CATALOG_DEBOUNCE_MS)
             val state = currentState
+            // vault 引用配置：明文输入为空时从凭证库解析（模型目录探测用）
+            val resolvedKey = state.apiKeyInput.trim().ifBlank {
+                state.apiKeyVaultRef.takeIf(String::isNotBlank)
+                    ?.let { ref -> runCatching { TokenVault.value(ref) }.getOrNull() }
+                    .orEmpty()
+            }
             val key = CatalogKey(
                 endpoint = state.endpointInput.trim(),
-                apiKey = state.apiKeyInput.trim(),
+                apiKey = resolvedKey,
                 protocolWireId = state.protocolWireId,
             )
             if (key == lastCatalogKey) return@launch
@@ -679,6 +689,16 @@ class ConfigureViewModel internal constructor(
             dependencies.upsertConfig(
                 current.toSavedLlmConfig().copy(id = targetConfigId)
             )
+            // vault 引用配置编辑时输入了新明文 key：同步更新凭证库条目
+            if (current.apiKeyVaultRef.isNotBlank() && current.apiKeyInput.isNotBlank()) {
+                runCatching {
+                    TokenVault.put(
+                        name = current.apiKeyVaultRef,
+                        value = current.apiKeyInput.trim(),
+                        note = "provider config: ${current.configNameInput.trim()}",
+                    )
+                }
+            }
             val refreshed = dependencies.loadDocument()
             updateState {
                 val next = copy(
@@ -725,6 +745,7 @@ private fun ConfigureUiState.toSavedLlmConfig(): SavedLlmConfig {
         provider = providerSpec.id,
         endpoint = resolvedEndpoint(),
         apiKey = apiKeyInput,
+        apiKeyVaultRef = apiKeyVaultRef,
         model = modelInput,
         protocol = protocolWireId,
         thinkingLevel = thinkingLevelWire,
@@ -763,7 +784,8 @@ private enum class ConfigureFieldTarget {
 private fun ConfigureUiState.firstInvalidField(): ConfigureFieldTarget? {
     return when {
         // 与填写顺序一致：API Key → Model → Endpoint → Proxy
-        apiKeyInput.trim().isBlank() -> ConfigureFieldTarget.ApiKey
+        // vault 引用生效时明文输入为空是预期（key 在凭证库），不算缺失
+        apiKeyInput.trim().isBlank() && apiKeyVaultRef.isBlank() -> ConfigureFieldTarget.ApiKey
         modelInput.trim().isBlank() -> ConfigureFieldTarget.Model
         endpointOverrideEnabled && endpointInput.trim().isBlank() -> ConfigureFieldTarget.Endpoint
         isValidProxy(proxyInput).not() -> ConfigureFieldTarget.Proxy

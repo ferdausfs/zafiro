@@ -508,4 +508,51 @@
     <string name="token_vault_error_name_required">El nombre es obligatorio</string>
     <string name="token_vault_error_value_required">El valor es obligatorio</string>
     <string name="token_vault_error_reveal_failed">No se pudo descifrar esta credencial</string>
+
+    <!-- v1.5.0 Tareas en segundo plano (Feature: Asynchronous Background Execution) -->
+    <string name="ui_settings_tasks">Tareas en segundo plano</string>
+    <string name="ui_settings_tasks_summary">Tareas que siguen ejecutándose al cerrar la app</string>
+    <string name="ui_settings_tasks_clear_finished">Borrar tareas finalizadas</string>
+    <string name="task_status_running">En ejecución</string>
+    <string name="task_status_completed">Completada</string>
+    <string name="task_status_failed">Fallida</string>
+    <string name="task_status_cancelled">Cancelada</string>
+    <string name="task_status_interrupted">Interrumpida</string>
+    <string name="task_list_empty">Aún no hay tareas en segundo plano</string>
+    <string name="task_channel_running">Tarea en segundo plano (en ejecución)</string>
+    <string name="task_channel_results">Resultados de tareas en segundo plano</string>
+    <string name="task_fgs_title">Zafiro está trabajando</string>
+    <string name="task_fgs_text">Tarea en segundo plano en curso…</string>
+    <string name="task_done_title">Tarea completada</string>
+    <string name="task_failed_title">Tarea fallida</string>
+    <string name="task_interrupted_title">Tarea interrumpida</string>
+    <string name="task_timeout_error">Tiempo de espera agotado (30 minutos)</string>
+
+    <!-- v1.5.0 Importar proveedor (Feature: Dynamic Provider Framework) -->
+    <string name="ui_settings_import_provider">Importar proveedor desde script</string>
+    <string name="ui_settings_import_provider_summary">Extrae URL base, clave de API y modelo de un script, JSON o cURL</string>
+    <string name="ui_settings_import_dialog_title">Importar proveedor</string>
+    <string name="ui_settings_import_input_hint">Pega un script de Python, JSON o comando cURL</string>
+    <string name="ui_settings_import_parse">Analizar</string>
+    <string name="ui_settings_import_name_label">Nombre del proveedor</string>
+    <string name="ui_settings_import_base_url_label">URL base</string>
+    <string name="ui_settings_import_model_label">ID del modelo</string>
+    <string name="ui_settings_import_api_key_label">Clave de API (guardada cifrada en la bóveda)</string>
+    <string name="ui_settings_import_save">Guardar y activar</string>
+    <string name="ui_settings_import_show">Mostrar</string>
+    <string name="ui_settings_import_hide">Ocultar</string>
+
+    <!-- v1.5.0 Respaldo de modelos (Feature: Intelligent Model Fallback) -->
+    <string name="ui_settings_fallback_title">Respaldo de modelos</string>
+    <string name="ui_settings_fallback_summary">Cambia automáticamente al siguiente modelo ante límites o sobrecarga</string>
+    <string name="ui_settings_fallback_dialog_title">Cadena de respaldo</string>
+    <string name="ui_settings_fallback_enabled">Activar respaldo</string>
+    <string name="ui_settings_fallback_add">Añadir modelo</string>
+    <string name="ui_settings_fallback_empty_chain">Aún no hay modelos de respaldo. Añade configuraciones guardadas.</string>
+    <string name="ui_settings_fallback_hint">La prioridad sigue el orden de la lista. El modelo activo siempre se prueba primero.</string>
+
+    <!-- v1.5.0 Menú de adjuntos (Feature: Universal File Upload) -->
+    <string name="ui_home_attach_photo">Foto</string>
+    <string name="ui_home_attach_document">Documento</string>
+    <string name="dialog_done">Hecho</string>
 </resources>

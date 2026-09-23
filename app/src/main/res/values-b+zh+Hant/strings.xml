@@ -492,4 +492,51 @@
     <string name="token_vault_error_name_required">請填寫名稱</string>
     <string name="token_vault_error_value_required">請填寫值</string>
     <string name="token_vault_error_reveal_failed">無法解密該憑證</string>
+
+    <!-- v1.5.0 背景工作（Feature: Asynchronous Background Execution） -->
+    <string name="ui_settings_tasks">背景工作</string>
+    <string name="ui_settings_tasks_summary">關閉應用後仍在背景繼續執行的工作</string>
+    <string name="ui_settings_tasks_clear_finished">清除已結束工作</string>
+    <string name="task_status_running">執行中</string>
+    <string name="task_status_completed">已完成</string>
+    <string name="task_status_failed">失敗</string>
+    <string name="task_status_cancelled">已取消</string>
+    <string name="task_status_interrupted">已中斷</string>
+    <string name="task_list_empty">暫無背景工作</string>
+    <string name="task_channel_running">背景工作（執行中）</string>
+    <string name="task_channel_results">背景工作結果</string>
+    <string name="task_fgs_title">Zafiro 正在執行工作</string>
+    <string name="task_fgs_text">背景工作進行中…</string>
+    <string name="task_done_title">工作完成</string>
+    <string name="task_failed_title">工作失敗</string>
+    <string name="task_interrupted_title">工作已中斷</string>
+    <string name="task_timeout_error">背景工作逾時（30 分鐘）</string>
+
+    <!-- v1.5.0 Provider 匯入（Feature: Dynamic Provider Framework） -->
+    <string name="ui_settings_import_provider">從指令碼匯入 Provider</string>
+    <string name="ui_settings_import_provider_summary">從指令碼 / JSON / cURL 解析位址、金鑰與模型</string>
+    <string name="ui_settings_import_dialog_title">匯入 Provider</string>
+    <string name="ui_settings_import_input_hint">貼上 Python 指令碼、JSON 設定或 cURL 命令</string>
+    <string name="ui_settings_import_parse">解析</string>
+    <string name="ui_settings_import_name_label">Provider 名稱</string>
+    <string name="ui_settings_import_base_url_label">接入位址（Base URL）</string>
+    <string name="ui_settings_import_model_label">模型 ID</string>
+    <string name="ui_settings_import_api_key_label">API 金鑰（加密存入憑證庫）</string>
+    <string name="ui_settings_import_save">儲存並啟用</string>
+    <string name="ui_settings_import_show">顯示</string>
+    <string name="ui_settings_import_hide">隱藏</string>
+
+    <!-- v1.5.0 模型回退（Feature: Intelligent Model Fallback） -->
+    <string name="ui_settings_fallback_title">模型回退</string>
+    <string name="ui_settings_fallback_summary">限流 / 過載時自動切換到下一個模型</string>
+    <string name="ui_settings_fallback_dialog_title">回退鏈</string>
+    <string name="ui_settings_fallback_enabled">啟用回退</string>
+    <string name="ui_settings_fallback_add">新增模型</string>
+    <string name="ui_settings_fallback_empty_chain">還沒有回退模型，從下方新增已儲存的設定。</string>
+    <string name="ui_settings_fallback_hint">優先級按列表順序；總是先嘗試目前啟用的模型。</string>
+
+    <!-- v1.5.0 附件選單（Feature: Universal File Upload） -->
+    <string name="ui_home_attach_photo">圖片</string>
+    <string name="ui_home_attach_document">文件</string>
+    <string name="dialog_done">完成</string>
 </resources>

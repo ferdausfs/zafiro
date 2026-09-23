@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
@@ -98,6 +99,7 @@ import com.niki914.zafiro.app.ui.PageChromeMenuItem
 import com.niki914.zafiro.app.ui.RegisterPageChrome
 import com.niki914.zafiro.app.ui.model.ActionSource
 import com.niki914.zafiro.app.ui.model.HomeChatBlock
+import com.niki914.zafiro.app.ui.model.HomeChatDocument
 import com.niki914.zafiro.app.ui.model.HomeChatImage
 import com.niki914.zafiro.app.ui.model.HomeChatIntent
 import com.niki914.zafiro.app.ui.model.HomeChatTurn
@@ -319,6 +321,13 @@ fun HomePageContent(
         onRemoveImage = { id ->
             viewModel.sendIntent(HomeChatIntent.ImageRemoved(id))
         },
+        pendingDocuments = uiState.pendingDocuments,
+        onDocumentAttached = { uri ->
+            viewModel.sendIntent(HomeChatIntent.DocumentAttached(uri))
+        },
+        onRemoveDocument = { id ->
+            viewModel.sendIntent(HomeChatIntent.DocumentRemoved(id))
+        },
         onComposerFocusChanged = { focused ->
             isComposerFocused = focused
         },
@@ -512,6 +521,9 @@ private fun HomePageContentBody(
     pendingImages: List<HomeChatImage>,
     onImageAttached: (String) -> Unit,
     onRemoveImage: (String) -> Unit,
+    pendingDocuments: List<HomeChatDocument>,
+    onDocumentAttached: (String) -> Unit,
+    onRemoveDocument: (String) -> Unit,
     onComposerFocusChanged: (Boolean) -> Unit,
     onReGenerate: (Long) -> Unit,
     onFork: (Long) -> Unit,
@@ -540,6 +552,15 @@ private fun HomePageContentBody(
     ) { uri ->
         if (uri != null) {
             onImageAttached(uri.toString())
+        }
+    }
+
+    // 系统文件选择器（Feature: Universal File Upload）：任意类型 → 文档 ingest
+    val documentPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            onDocumentAttached(uri.toString())
         }
     }
 
@@ -615,6 +636,23 @@ private fun HomePageContentBody(
             }
         }
 
+        // 待发文档条（Feature: Universal File Upload）：位于图片条上方（有图片时），
+        // 无图片时贴 composer 上方。展示文件名 + 大小 + 移除按钮
+        if (pendingDocuments.isNotEmpty()) {
+            HomeChatDocumentRow(
+                documents = pendingDocuments,
+                onRemoveDocument = onRemoveDocument,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(start = 20.dp, end = 20.dp)
+                    .fillMaxWidth()
+                    .padding(
+                        bottom = composerBottomPadding + composerHeight.value +
+                                (if (pendingImages.isNotEmpty()) 76.dp else 8.dp),
+                    ),
+            )
+        }
+
         // 待发图片条：宽 = composer 本体，位于 composer 上方 8dp；声明在 composer
         // 之前，万一重合 composer 层级更高盖住图片。composer 拉长/被 IME 顶起时随
         // composerHeight/composerBottomPadding 精确跟随。不可点击（TODO: 后续接入点开大图）
@@ -645,6 +683,10 @@ private fun HomePageContentBody(
                     photoPicker.launch(
                         PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                     )
+                },
+                pendingDocuments = pendingDocuments,
+                onAttachDocumentClick = {
+                    documentPicker.launch(arrayOf("*/*"))
                 },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -835,6 +877,19 @@ private fun HomeChatTurnItem(
         // Row 贴内容宽、max 同 bubble（0.82f）；外层与卡片同圆角 clip——边缘图片被
         // 裁时仍呈圆角。多图时初始 scroll=0 优先展示左边的图，整行靠右。
         // 不可点击（TODO: 点开大图）
+        if (turn.documents.isNotEmpty()) {
+            // 附件文档 chips（Feature: Universal File Upload）：名字 + 大小
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                Column(horizontalAlignment = Alignment.End) {
+                    turn.documents.forEach { document ->
+                        DocumentChip(document = document)
+                    }
+                }
+            }
+        }
         if (turn.images.isNotEmpty()) {
             BoxWithConstraints(
                 modifier = Modifier.fillMaxWidth(),
@@ -1186,6 +1241,9 @@ private fun HomePageContentPreview() {
                 pendingImages = emptyList(),
                 onImageAttached = {},
                 onRemoveImage = {},
+                pendingDocuments = emptyList(),
+                onDocumentAttached = {},
+                onRemoveDocument = {},
                 onComposerFocusChanged = {},
                 onReGenerate = { },
                 onFork = { },

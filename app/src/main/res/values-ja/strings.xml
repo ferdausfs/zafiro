@@ -507,4 +507,51 @@
     <string name="token_vault_error_name_required">名前を入力してください</string>
     <string name="token_vault_error_value_required">値を入力してください</string>
     <string name="token_vault_error_reveal_failed">この認証情報を復号できません</string>
+
+    <!-- v1.5.0 バックグラウンドタスク（Feature: Asynchronous Background Execution） -->
+    <string name="ui_settings_tasks">バックグラウンドタスク</string>
+    <string name="ui_settings_tasks_summary">アプリを閉じても実行が続くタスク</string>
+    <string name="ui_settings_tasks_clear_finished">終了したタスクを削除</string>
+    <string name="task_status_running">実行中</string>
+    <string name="task_status_completed">完了</string>
+    <string name="task_status_failed">失敗</string>
+    <string name="task_status_cancelled">キャンセル</string>
+    <string name="task_status_interrupted">中断</string>
+    <string name="task_list_empty">バックグラウンドタスクはまだありません</string>
+    <string name="task_channel_running">バックグラウンドタスク（実行中）</string>
+    <string name="task_channel_results">バックグラウンドタスクの結果</string>
+    <string name="task_fgs_title">Zafiro がタスクを実行中</string>
+    <string name="task_fgs_text">バックグラウンドタスク進行中…</string>
+    <string name="task_done_title">タスク完了</string>
+    <string name="task_failed_title">タスク失敗</string>
+    <string name="task_interrupted_title">タスク中断</string>
+    <string name="task_timeout_error">バックグラウンドタスクがタイムアウトしました（30 分）</string>
+
+    <!-- v1.5.0 プロバイダー取り込み（Feature: Dynamic Provider Framework） -->
+    <string name="ui_settings_import_provider">スクリプトからプロバイダーを取り込み</string>
+    <string name="ui_settings_import_provider_summary">スクリプト / JSON / cURL から URL・キー・モデルを解析</string>
+    <string name="ui_settings_import_dialog_title">プロバイダーを取り込む</string>
+    <string name="ui_settings_import_input_hint">Python スクリプト、JSON 設定、cURL コマンドを貼り付け</string>
+    <string name="ui_settings_import_parse">解析</string>
+    <string name="ui_settings_import_name_label">プロバイダー名</string>
+    <string name="ui_settings_import_base_url_label">ベース URL</string>
+    <string name="ui_settings_import_model_label">モデル ID</string>
+    <string name="ui_settings_import_api_key_label">API キー（ボールトに暗号化保存）</string>
+    <string name="ui_settings_import_save">保存して有効化</string>
+    <string name="ui_settings_import_show">表示</string>
+    <string name="ui_settings_import_hide">非表示</string>
+
+    <!-- v1.5.0 モデルフォールバック（Feature: Intelligent Model Fallback） -->
+    <string name="ui_settings_fallback_title">モデルフォールバック</string>
+    <string name="ui_settings_fallback_summary">レート制限・過負荷時に次のモデルへ自動切替</string>
+    <string name="ui_settings_fallback_dialog_title">フォールバックチェーン</string>
+    <string name="ui_settings_fallback_enabled">フォールバックを有効化</string>
+    <string name="ui_settings_fallback_add">モデルを追加</string>
+    <string name="ui_settings_fallback_empty_chain">フォールバックモデルがまだありません。下から保存済み設定を追加してください。</string>
+    <string name="ui_settings_fallback_hint">優先度はリスト順。常に有効なモデルを先に試します。</string>
+
+    <!-- v1.5.0 添付メニュー（Feature: Universal File Upload） -->
+    <string name="ui_home_attach_photo">画像</string>
+    <string name="ui_home_attach_document">ドキュメント</string>
+    <string name="dialog_done">完了</string>
 </resources>

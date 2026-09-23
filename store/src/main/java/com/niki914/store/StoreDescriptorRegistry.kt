@@ -15,6 +15,9 @@ object StoreDescriptorRegistry {
     const val AUTOMATION_TRIGGERS_ID = "automation.triggers"
     const val RULES_TAKEOVER_ID = "rules.takeover"
     const val APP_STATE_ID = "app.state"
+    const val LLM_PROVIDERS_ID = "llm.providers"
+    const val LLM_FALLBACK_ID = "llm.fallback"
+    const val AGENT_TASKS_ID = "agent.tasks"
     const val AGENT_CONFIG_PREFIX = "agent.config."
     const val MAIN_AGENT_ID = "main"
 
@@ -61,7 +64,22 @@ object StoreDescriptorRegistry {
             "settings/rules/takeover_rules.json",
             """{"rules":[]}"""
         ),
-        StoreDescriptor(APP_STATE_ID, "settings/app_state.json")
+        StoreDescriptor(APP_STATE_ID, "settings/app_state.json"),
+        StoreDescriptor(
+            LLM_PROVIDERS_ID,
+            "settings/llm/providers.json",
+            """{"providers":[]}"""
+        ),
+        StoreDescriptor(
+            LLM_FALLBACK_ID,
+            "settings/llm/fallback.json",
+            """{"enabled":false,"order":[]}"""
+        ),
+        StoreDescriptor(
+            AGENT_TASKS_ID,
+            "settings/agent/tasks.json",
+            """{"tasks":[]}"""
+        )
     )
 
     private val staticDescriptorById = staticDescriptors.associateBy(StoreDescriptor::id)

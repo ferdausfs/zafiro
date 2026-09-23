@@ -53,6 +53,9 @@ object XRepo {
     val skills: SkillApi = SkillApi(this)
     val storage: StorageApi = StorageApi(this)
     val llmConfigs = LlmConfigsApi(this)
+    val customProviders = CustomProviderApi(this)
+    val fallback = FallbackApi(this)
+    val backgroundTasks = BackgroundTaskApi(this)
 
     private val writeMutex = Mutex()
     private var appContext: Context? = null
@@ -634,6 +637,10 @@ class LlmConfigsApi internal constructor(
                 model = config.model.trim(),
                 protocol = config.protocol.trim().lowercase(),
                 proxy = config.proxy.trim(),
+                // vault 引用生效时明文字段必须清空：key 只进凭证库，不落盘
+                apiKey = config.apiKeyVaultRef.trim().ifBlank { config.apiKey.trim() }
+                    .let { filled -> if (config.apiKeyVaultRef.isNotBlank()) "" else filled },
+                apiKeyVaultRef = config.apiKeyVaultRef.trim(),
                 createdAt = createdAt,
                 updatedAt = nowMillis,
             )

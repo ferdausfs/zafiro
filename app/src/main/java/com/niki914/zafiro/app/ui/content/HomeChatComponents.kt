@@ -26,13 +26,18 @@ import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Undo
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.produceState
@@ -83,6 +88,7 @@ import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.ActionSource
 import com.niki914.zafiro.app.ui.model.MessageActionsDisplay
+import com.niki914.zafiro.app.ui.model.HomeChatDocument
 import com.niki914.zafiro.app.ui.model.HomeChatImage
 import com.niki914.zafiro.chat.LlmErrorCode
 
@@ -418,8 +424,11 @@ fun LiquidChatComposer(
     modifier: Modifier = Modifier,
     pendingImages: List<HomeChatImage> = emptyList(),
     onAttachImageClick: () -> Unit = {},
+    pendingDocuments: List<HomeChatDocument> = emptyList(),
+    onAttachDocumentClick: () -> Unit = {},
 ) {
-    val canSend = !isGenerating && (value.isNotBlank() || pendingImages.isNotEmpty())
+    val canSend = !isGenerating &&
+            (value.isNotBlank() || pendingImages.isNotEmpty() || pendingDocuments.isNotEmpty())
     val buttonEnabled = isGenerating || canSend
     val stopContentDescription = stringResource(R.string.ui_home_stop_content_description)
     val contentColor = if (buttonEnabled) {
@@ -444,21 +453,46 @@ fun LiquidChatComposer(
 
     @Composable
     fun attachButton() {
-        // add 按钮恒亮：不随 canSend 变灰（只有 send 随发送态变化）
+        // add 按钮恒亮：不随 canSend 变灰（只有 send 随发送态变化）。
+        // 点击弹附件菜单：图片（photo picker）/ 文档（Feature: Universal File Upload）
+        var attachMenuOpen by remember { mutableStateOf(false) }
         CompositionLocalProvider(
             LocalContentColor provides MaterialTheme.colorScheme.primary,
         ) {
-            ActionBarButton(
-                onClick = onAttachImageClick,
-                enabled = !isGenerating,
-                modifier = Modifier.offset(x = (-6).dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = stringResource(
-                        R.string.ui_home_add_image_content_description
-                    ),
-                )
+            Box {
+                ActionBarButton(
+                    onClick = { attachMenuOpen = true },
+                    enabled = !isGenerating,
+                    modifier = Modifier.offset(x = (-6).dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = stringResource(
+                            R.string.ui_home_add_image_content_description
+                        ),
+                    )
+                }
+                DropdownMenu(
+                    expanded = attachMenuOpen,
+                    onDismissRequest = { attachMenuOpen = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.ui_home_attach_photo)) },
+                        leadingIcon = { Icon(Icons.Default.Image, contentDescription = null) },
+                        onClick = {
+                            attachMenuOpen = false
+                            onAttachImageClick()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.ui_home_attach_document)) },
+                        leadingIcon = { Icon(Icons.Default.Description, contentDescription = null) },
+                        onClick = {
+                            attachMenuOpen = false
+                            onAttachDocumentClick()
+                        },
+                    )
+                }
             }
         }
     }
@@ -715,4 +749,90 @@ fun HomeChatImageRow(
             )
         }
     }
+}
+
+/**
+ * 待发文档条（Feature: Universal File Upload）：文件名 + 大小 + 移除按钮，
+ * 横向滚动。样式对齐 composer 待发图片条的卡片语言（G2 圆角）。
+ */
+@Composable
+fun HomeChatDocumentRow(
+    documents: List<HomeChatDocument>,
+    onRemoveDocument: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        documents.forEach { document ->
+            DocumentChip(
+                document = document,
+                onRemove = { onRemoveDocument(document.id) },
+            )
+        }
+    }
+}
+
+/**
+ * 文档 chip（待发条带移除按钮；用户消息气泡区不带移除）。
+ */
+@Composable
+fun DocumentChip(
+    document: HomeChatDocument,
+    onRemove: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    val sizeLabel = if (document.sizeBytes > 0) {
+        " · " + formatDocumentSize(document.sizeBytes)
+    } else {
+        ""
+    }
+    Surface(
+        modifier = modifier,
+        shape = G2CardShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 12.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Description,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Column {
+                Text(
+                    text = document.name,
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1,
+                )
+                if (sizeLabel.isNotEmpty()) {
+                    Text(
+                        text = sizeLabel.removePrefix(" · "),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            if (onRemove != null) {
+                ActionBarButton(onClick = onRemove) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun formatDocumentSize(bytes: Long): String = when {
+    bytes >= 1024 * 1024 -> "%.1f MB".format(bytes / 1024f / 1024f)
+    bytes >= 1024 -> "%.1f KB".format(bytes / 1024f)
+    else -> "$bytes B"
 }

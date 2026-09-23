@@ -216,6 +216,7 @@ object AgentStatusHolder {
         is LlmStreamEvent.ThinkingStarted,
         is LlmStreamEvent.ToolPending,
         is LlmStreamEvent.Retrying,
+        is LlmStreamEvent.ModelSwitched,
         -> AgentPhase.Generating
 
         is LlmStreamEvent.ToolRunning -> AgentPhase.ToolRunning

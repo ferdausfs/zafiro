@@ -37,6 +37,8 @@ fun ModelConfigSettingsContent(
     )
     val uiState by viewModel.uiStateFlow.collectAsState()
     var pendingDeleteConfigId by rememberSaveable { mutableStateOf<String?>(null) }
+    var showImportDialog by rememberSaveable { mutableStateOf(false) }
+    var showFallbackDialog by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
         viewModel.sendIntent(
@@ -62,6 +64,19 @@ fun ModelConfigSettingsContent(
                     title = stringResource(R.string.ui_settings_configure_prompt_label),
                     summary = null,
                     onClick = onOpenPromptEdit,
+                )
+                SettingNavigationItem(
+                    title = stringResource(R.string.ui_settings_fallback_title),
+                    summary = stringResource(R.string.ui_settings_fallback_summary),
+                    onClick = { showFallbackDialog = true },
+                )
+            }
+
+            SettingsGroupCard {
+                SettingNavigationItem(
+                    title = stringResource(R.string.ui_settings_import_provider),
+                    summary = stringResource(R.string.ui_settings_import_provider_summary),
+                    onClick = { showImportDialog = true },
                 )
             }
 
@@ -100,4 +115,11 @@ fun ModelConfigSettingsContent(
             pendingDeleteConfigId = null
         },
     )
+
+    if (showImportDialog) {
+        ProviderImportDialog(onDismiss = { showImportDialog = false })
+    }
+    if (showFallbackDialog) {
+        FallbackSettingsDialog(onDismiss = { showFallbackDialog = false })
+    }
 }

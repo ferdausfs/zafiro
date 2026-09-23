@@ -10,6 +10,7 @@ import com.niki914.permission.Permission
 import com.niki914.permission.PermissionState
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.app.automation.AutomationHub
+import com.niki914.zafiro.app.automation.BackgroundTaskHub
 import com.niki914.zafiro.app.conversation.ConversationPersister
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.overlay.ToolPermissionOverlay
@@ -66,6 +67,10 @@ class App : Application() {
 
         // 主动自动化中枢：事件源 → 触发器匹配 → Agent 唤醒（主进程专属）
         AutomationHub.init(applicationContext, applicationScope)
+        // 后台任务中枢：回合与 UI 生命周期解耦（FGS 保活 + 完成通知）
+        BackgroundTaskHub.init(applicationContext, applicationScope)
+        // PDF 文本提取引擎（通用文档上传，com.tom-roush:pdfbox-android）
+        com.tom_roush.pdfbox.android.PDFBoxResourceLoader.init(applicationContext)
 
         ToolPermissionCoordinator.backgroundConfirmationHandler = { request ->
             handleBackgroundConfirmation(this, request)

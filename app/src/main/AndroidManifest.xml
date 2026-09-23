@@ -118,5 +118,14 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="proactive_automation_listener" />
         </service>
+
+        <service
+            android:name="com.niki914.zafiro.app.automation.ZafiroTaskService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="background_task_runner" />
+        </service>
     </application>
 </manifest>

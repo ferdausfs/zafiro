@@ -508,4 +508,51 @@
     <string name="token_vault_error_name_required">Name is required</string>
     <string name="token_vault_error_value_required">Value is required</string>
     <string name="token_vault_error_reveal_failed">Could not decrypt this credential</string>
+
+    <!-- v1.5.0 Background tasks (Feature: Asynchronous Background Execution) -->
+    <string name="ui_settings_tasks">Background tasks</string>
+    <string name="ui_settings_tasks_summary">Tasks that keep running after you close the app</string>
+    <string name="ui_settings_tasks_clear_finished">Clear finished tasks</string>
+    <string name="task_status_running">Running</string>
+    <string name="task_status_completed">Completed</string>
+    <string name="task_status_failed">Failed</string>
+    <string name="task_status_cancelled">Cancelled</string>
+    <string name="task_status_interrupted">Interrupted</string>
+    <string name="task_list_empty">No background tasks yet</string>
+    <string name="task_channel_running">Background task (running)</string>
+    <string name="task_channel_results">Background task results</string>
+    <string name="task_fgs_title">Zafiro agent is working</string>
+    <string name="task_fgs_text">Background task in progress…</string>
+    <string name="task_done_title">Task completed</string>
+    <string name="task_failed_title">Task failed</string>
+    <string name="task_interrupted_title">Task interrupted</string>
+    <string name="task_timeout_error">Background task timed out (30 minutes)</string>
+
+    <!-- v1.5.0 Provider import (Feature: Dynamic Provider Framework) -->
+    <string name="ui_settings_import_provider">Import provider from script</string>
+    <string name="ui_settings_import_provider_summary">Parse base URL, API key and model from a script, JSON or cURL</string>
+    <string name="ui_settings_import_dialog_title">Import provider</string>
+    <string name="ui_settings_import_input_hint">Paste a Python script, JSON config or cURL command</string>
+    <string name="ui_settings_import_parse">Parse</string>
+    <string name="ui_settings_import_name_label">Provider name</string>
+    <string name="ui_settings_import_base_url_label">Base URL</string>
+    <string name="ui_settings_import_model_label">Model ID</string>
+    <string name="ui_settings_import_api_key_label">API key (stored encrypted in vault)</string>
+    <string name="ui_settings_import_save">Save &amp; activate</string>
+    <string name="ui_settings_import_show">Show</string>
+    <string name="ui_settings_import_hide">Hide</string>
+
+    <!-- v1.5.0 Model fallback (Feature: Intelligent Model Fallback) -->
+    <string name="ui_settings_fallback_title">Model fallback</string>
+    <string name="ui_settings_fallback_summary">Auto-switch to the next model on rate limit or overload</string>
+    <string name="ui_settings_fallback_dialog_title">Fallback chain</string>
+    <string name="ui_settings_fallback_enabled">Enable fallback</string>
+    <string name="ui_settings_fallback_add">Add model</string>
+    <string name="ui_settings_fallback_empty_chain">No fallback models yet. Add saved configurations below.</string>
+    <string name="ui_settings_fallback_hint">Priority follows the list order. The active model is always tried first.</string>
+
+    <!-- v1.5.0 Attachment menu (Feature: Universal File Upload) -->
+    <string name="ui_home_attach_photo">Photo</string>
+    <string name="ui_home_attach_document">Document</string>
+    <string name="dialog_done">Done</string>
 </resources>

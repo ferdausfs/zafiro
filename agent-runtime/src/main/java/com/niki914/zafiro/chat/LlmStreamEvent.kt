@@ -69,6 +69,17 @@ sealed interface LlmStreamEvent {
         val reason: String,
     ) : LlmStreamEvent
 
+    /**
+     * 模型回退切换（Feature: Intelligent Model Fallback）：主模型失败
+     * （限流/过载/上下文超限/配额）且自动重试耗尽后，回退链中下一个配置
+     * 已接手，同一回合继续执行。瞬时事件：UI 提示一次，下一个流事件到达即清除。
+     */
+    data class ModelSwitched(
+        val fromModel: String,
+        val toModel: String,
+        val reason: String,
+    ) : LlmStreamEvent
+
     /** 回合正常结束（纯终态标记；显示文本一律以 TextDelta 累积为准）。 */
     data object Completed : LlmStreamEvent
 }

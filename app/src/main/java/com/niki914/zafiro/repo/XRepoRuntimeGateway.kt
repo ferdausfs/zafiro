@@ -23,7 +23,8 @@ class XRepoRuntimeGateway(
         return RuntimeLlmConfig(
             provider = active?.provider.orEmpty(),
             endpoint = active?.endpoint.orEmpty(),
-            apiKey = active?.apiKey.orEmpty(),
+            // vault 引用优先：key 明文只在运行时内存中出现，不落盘
+            apiKey = active?.resolveApiKey().orEmpty(),
             model = active?.model.orEmpty(),
             protocol = active?.protocol.orEmpty(),
             supportsImages = active?.supportsImages ?: false,
@@ -34,6 +35,26 @@ class XRepoRuntimeGateway(
             idleTimeoutSeconds = repo.llmIdleTimeoutSeconds().takeIf { it > 0L },
             retryMaxAttempts = repo.llmRetryMaxAttempts(),
         )
+    }
+
+    override suspend fun fallbackConfigs(): List<RuntimeLlmConfig> {
+        val doc = repo.llmConfigs.document()
+        return repo.fallback.resolveConfigs(activeConfigId = doc.activeId).map { saved ->
+            RuntimeLlmConfig(
+                provider = saved.provider,
+                endpoint = saved.endpoint,
+                apiKey = saved.resolveApiKey().orEmpty(),
+                model = saved.model,
+                protocol = saved.protocol,
+                supportsImages = saved.supportsImages,
+                // prompt 是全局一份的行为层配置；最终提示词沿用 active 组装结果
+                prompt = doc.prompt,
+                proxy = saved.proxy,
+                thinkingLevel = saved.thinkingLevel,
+                idleTimeoutSeconds = repo.llmIdleTimeoutSeconds().takeIf { it > 0L },
+                retryMaxAttempts = repo.llmRetryMaxAttempts(),
+            )
+        }.filter { it.apiKey.isNotBlank() || it.endpoint.isNotBlank() }
     }
 
     override suspend fun listMcpServers(): List<RuntimeMcpServer> = repo.mcp.list()

@@ -29,9 +29,22 @@ data class SavedLlmConfig(
     val proxy: String,
     /** ThinkingLevel.wireValue；空串 = 不发送思考字段（Provider 默认行为）。 */
     val thinkingLevel: String = "",
+    /**
+     * TokenVault 凭证引用（加密存储）；非空时运行时优先从凭证库取明文 key，
+     * [apiKey] 字段保持空串不落盘。空串 = key 随配置明文存储（旧行为）。
+     */
+    val apiKeyVaultRef: String = "",
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L,
-)
+) {
+    /** 实际可用的 API key：vault 引用优先，回退明文字段（由调用方挂起解析 vault）。 */
+    suspend fun resolveApiKey(): String? {
+        if (apiKeyVaultRef.isNotBlank()) {
+            TokenVault.value(apiKeyVaultRef)?.takeIf(String::isNotBlank)?.let { return it }
+        }
+        return apiKey.takeIf(String::isNotBlank)
+    }
+}
 
 /**
  * llm.saved_configs store 的文档结构：
@@ -82,6 +95,7 @@ internal object LlmConfigsSettingsCodec {
             supportsImages = obj.boolean(SUPPORTS_IMAGES_KEY),
             proxy = obj.string(PROXY_KEY),
             thinkingLevel = obj.string(THINKING_LEVEL_KEY),
+            apiKeyVaultRef = obj.string(API_KEY_VAULT_REF_KEY),
             createdAt = obj.long(CREATED_AT_KEY, 0L),
             updatedAt = obj.long(UPDATED_AT_KEY, 0L),
         )
@@ -100,6 +114,7 @@ internal object LlmConfigsSettingsCodec {
                 SUPPORTS_IMAGES_KEY to JsonPrimitive(config.supportsImages),
                 PROXY_KEY to JsonPrimitive(config.proxy),
                 THINKING_LEVEL_KEY to JsonPrimitive(config.thinkingLevel),
+                API_KEY_VAULT_REF_KEY to JsonPrimitive(config.apiKeyVaultRef),
                 CREATED_AT_KEY to JsonPrimitive(config.createdAt),
                 UPDATED_AT_KEY to JsonPrimitive(config.updatedAt),
             )
@@ -127,6 +142,7 @@ internal object LlmConfigsSettingsCodec {
     private const val SUPPORTS_IMAGES_KEY = "supports_images"
     private const val PROXY_KEY = "proxy"
     private const val THINKING_LEVEL_KEY = "thinking_level"
+    private const val API_KEY_VAULT_REF_KEY = "api_key_vault_ref"
     private const val CREATED_AT_KEY = "created_at"
     private const val UPDATED_AT_KEY = "updated_at"
 }

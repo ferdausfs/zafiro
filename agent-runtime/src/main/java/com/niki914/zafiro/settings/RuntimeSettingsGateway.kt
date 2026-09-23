@@ -14,6 +14,12 @@ import com.niki914.zafiro.settings.model.RuntimeToolValidation
 interface RuntimeSettingsGateway {
     suspend fun readLlmConfig(agentId: String = "main"): RuntimeLlmConfig
 
+    /**
+     * 模型回退链（按优先级排序，不含当前 active 配置）。
+     * 空列表 = 未配置回退；实现缺省返回空（宿主/测试 fake 未迁移时不被破坏）。
+     */
+    suspend fun fallbackConfigs(): List<RuntimeLlmConfig> = emptyList()
+
     suspend fun listEnabledSkills(): List<RuntimeSkillMetadata> = emptyList()
 
     suspend fun loadSkill(id: String): RuntimeLoadedSkill? = null

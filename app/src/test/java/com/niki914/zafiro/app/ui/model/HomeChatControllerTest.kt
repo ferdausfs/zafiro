@@ -1264,6 +1264,7 @@ private class FakeHomeChatRuntime(
     private val ingestImage: suspend (String) -> HomeChatImage? = { uri ->
         HomeChatImage(id = "ingested-$uri", path = "/tmp/$uri.jpg")
     },
+    private val ingestDocument: suspend (String) -> HomeChatDocument? = { null },
 ) : HomeChatRuntime {
     override fun stream(query: String, images: List<ContentBlock.Image>): Flow<LlmStreamEvent> =
         stream.invoke(query, images)
@@ -1274,6 +1275,7 @@ private class FakeHomeChatRuntime(
     override suspend fun openSession(restore: SessionSnapshot) = openSession.invoke(restore)
     override suspend fun historySnapshot(): List<Message> = historySnapshot.invoke()
     override suspend fun ingestImage(uri: String): HomeChatImage? = ingestImage.invoke(uri)
+    override suspend fun ingestDocument(uri: String): HomeChatDocument? = ingestDocument.invoke(uri)
 }
 
 private open class FakeHomeConversationStore : HomeConversationStore {

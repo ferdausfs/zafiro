@@ -128,6 +128,11 @@ fun SettingsDetailPageContent(
         return
     }
 
+    if (group == ZafiroSettingsGroup.Tasks) {
+        BackgroundTasksSettingsContent()
+        return
+    }
+
     if (group == ZafiroSettingsGroup.AgentPlan) {
         TODOPageContent()
         return
