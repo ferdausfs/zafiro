@@ -30,6 +30,10 @@ android {
         ndk {
             // 真机都是 arm64；x86_64 模拟器在各模块的 debug 构建里追加
             abiFilters += "arm64-v8a"
+            // -PUNIVERSAL=true 时附加 32 位 ABI，兼容老设备
+            if (project.hasProperty("UNIVERSAL")) {
+                abiFilters += "armeabi-v7a"
+            }
         }
     }
 
