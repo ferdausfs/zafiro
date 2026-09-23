@@ -33,6 +33,16 @@ enum class ZafiroSettingsGroup(
         summaryRes = R.string.ui_settings_mcp_summary,
         routeSuffix = "mcp",
     ),
+    TokenVault(
+        titleRes = R.string.ui_settings_token_vault,
+        summaryRes = R.string.ui_settings_token_vault_summary,
+        routeSuffix = "token-vault",
+    ),
+    AgentPlan(
+        titleRes = R.string.ui_settings_agent_plan,
+        summaryRes = R.string.ui_settings_agent_plan_summary,
+        routeSuffix = "agent-plan",
+    ),
     Takeover(
         titleRes = R.string.ui_settings_takeover,
         summaryRes = R.string.ui_settings_takeover_summary,

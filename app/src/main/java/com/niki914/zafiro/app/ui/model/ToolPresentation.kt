@@ -4,7 +4,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.runtime.Composable
@@ -34,6 +36,8 @@ object ToolPresentation {
     private val Skill = Icons.AutoMirrored.Filled.MenuBook
     private val Camera = Icons.Filled.CameraAlt
     private val ImageTool = Icons.Filled.Image
+    private val Plan = Icons.Filled.Checklist
+    private val VaultKey = Icons.Filled.Key
 
     /** 默认（兜底）图标：扳手。 */
     val Default = Icons.Filled.Build
@@ -54,6 +58,8 @@ object ToolPresentation {
             name == "screenshot" -> Camera
             name == "view_image" -> ImageTool
             name.contains("skill", ignoreCase = true) -> Skill
+            name == "todo_write" -> Plan
+            name == "vault_token" -> VaultKey
             else -> Default
         }
     }
@@ -74,6 +80,8 @@ object ToolPresentation {
         "screen_operation_shell" -> R.string.ui_tool_display_screen_operation_shell
         "screenshot" -> R.string.ui_tool_display_screenshot
         "view_image" -> R.string.ui_tool_display_view_image
+        "todo_write" -> R.string.ui_tool_display_todo_write
+        "vault_token" -> R.string.ui_tool_display_vault_token
         else -> null
     }
 

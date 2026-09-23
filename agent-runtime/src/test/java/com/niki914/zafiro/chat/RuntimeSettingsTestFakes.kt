@@ -12,7 +12,9 @@ import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import com.niki914.zafiro.settings.model.RuntimeLoadedSkill
 import com.niki914.zafiro.settings.model.RuntimeMcpServer
 import com.niki914.zafiro.settings.model.RuntimeSkillMetadata
+import com.niki914.zafiro.settings.model.RuntimeTodoItem
 import com.niki914.zafiro.settings.model.RuntimeToolValidation
+import com.niki914.zafiro.settings.model.RuntimeVaultTokenSummary
 
 internal fun installRuntimeSettingsGatewayForTest(
     gateway: FakeRuntimeSettingsGateway = FakeRuntimeSettingsGateway(),
@@ -176,6 +178,34 @@ internal class FakeRuntimeSettingsGateway(
 
     override suspend fun listExecutionRules(): List<RuntimeExecutionRule> {
         return executionRules.toList()
+    }
+
+    // --- vault / todo（默认空实现之上的有状态 fake） ---
+
+    var vaultTokens: List<RuntimeVaultTokenSummary> = emptyList()
+    var vaultValues: Map<String, String> = emptyMap()
+    var failVault: Throwable? = null
+    var todoItems: List<RuntimeTodoItem> = emptyList()
+        private set
+    var todoWriteCount: Int = 0
+        private set
+
+    override suspend fun listVaultTokens(): List<RuntimeVaultTokenSummary> {
+        failVault?.let { throw it }
+        return vaultTokens
+    }
+
+    override suspend fun vaultTokenValue(name: String): String? {
+        failVault?.let { throw it }
+        return vaultValues[name]
+    }
+
+    override suspend fun readTodoItems(): List<RuntimeTodoItem> = todoItems
+
+    override suspend fun writeTodoItems(items: List<RuntimeTodoItem>) {
+        recordWrite()
+        todoItems = items
+        todoWriteCount++
     }
 
     private fun recordWrite() {

@@ -121,6 +121,10 @@
     <string name="skill_import_resolve_failed">無法存取所選文件夾</string>
     <string name="ui_settings_mcp">MCP</string>
     <string name="ui_settings_mcp_summary">連接外部 MCP 服務與工具</string>
+    <string name="ui_settings_token_vault">憑證庫（Tokens）</string>
+    <string name="ui_settings_token_vault_summary">安全保存 GitHub、Cloudflare 等憑證供 Agent 使用</string>
+    <string name="ui_settings_agent_plan">Agent 計畫</string>
+    <string name="ui_settings_agent_plan_summary">即時查看 Agent 的任務計畫與執行進度</string>
     <string name="ui_settings_takeover">接管規則</string>
     <string name="ui_settings_takeover_summary">設定哪些輸入交給原生助理或 Zafiro</string>
     <string name="ui_settings_execution_rules">執行規則</string>
@@ -156,8 +160,11 @@
     <string name="ui_settings_storage_error_clear_failed">清理失敗：%1$s</string>
 
     <!-- Settings Detail Shared -->
-    <string name="ui_todo_page_title">功能開發中</string>
-    <string name="ui_todo_page_description">將於後續版本支援，敬請期待。</string>
+    <string name="ui_todo_page_title">Agent 計畫</string>
+    <string name="ui_todo_page_description">Agent 執行多步驟任務時會在這裡維護計畫。本頁即時重新整理，可隨時查看執行進度。</string>
+    <string name="ui_todo_page_loading">正在讀取計畫...</string>
+    <string name="ui_todo_page_empty">目前沒有進行中的計畫。指派 Agent 一個多步驟任務後，計畫會出現在這裡。</string>
+    <string name="ui_todo_page_progress">已完成 %1$d/%2$d</string>
     <string name="unsaved_changes_dialog_title">有尚未儲存的變更</string>
     <string name="unsaved_changes_dialog_text">確定要離開嗎？</string>
     <string name="unsaved_changes_dialog_confirm_exit">離開</string>
@@ -339,6 +346,8 @@
     <string name="ui_tool_display_screen_operation_shell">螢幕操作</string>
     <string name="ui_tool_display_screenshot">擷取螢幕</string>
     <string name="ui_tool_display_view_image">檢視圖片</string>
+    <string name="ui_tool_display_todo_write">更新計畫</string>
+    <string name="ui_tool_display_vault_token">憑證庫</string>
     <string name="dialog_cancel">取消</string>
     <string name="dialog_confirm_delete">刪除</string>
     <string name="ui_settings_section_general">一般</string>
@@ -413,4 +422,29 @@
     <string name="ui_theme_color_lemon">檸檬黃</string>
     <string name="ui_theme_color_amber">琥珀</string>
     <string name="ui_theme_color_sunset">落日橙</string>
+    <string name="token_vault_page_description">在此保存 GitHub token、Cloudflare API token 等憑證。值經 Android Keystore AES-256 加密，僅保存在本裝置；Agent 可透過 vault_token 工具按名稱取用（僅顯示名稱與備註）。</string>
+    <string name="token_vault_page_empty_description">還沒有保存任何憑證。點擊右上角 + 新增第一筆（例如 GitHub token），Agent 就能在需要登入的任務中直接使用。</string>
+    <string name="token_vault_loading">正在載入...</string>
+    <string name="token_vault_editor_title_create">新增憑證</string>
+    <string name="token_vault_editor_title_edit">編輯憑證</string>
+    <string name="token_vault_field_name">名稱</string>
+    <string name="token_vault_field_name_hint">例如 github_token</string>
+    <string name="token_vault_field_value">值</string>
+    <string name="token_vault_field_value_hint">貼上 token 或金鑰</string>
+    <string name="token_vault_field_value_keep_hint">留空表示保留原值</string>
+    <string name="token_vault_field_note">備註（選填）</string>
+    <string name="token_vault_field_note_hint">例如 GitHub 個人存取權杖</string>
+    <string name="token_vault_reveal_action">顯示</string>
+    <string name="token_vault_save_action">儲存</string>
+    <string name="token_vault_cancel_action">取消</string>
+    <string name="token_vault_delete_dialog_title">刪除憑證</string>
+    <string name="token_vault_delete_dialog_text">確定刪除「%1$s」嗎？此操作無法復原。</string>
+    <string name="token_vault_delete_dialog_cancel">取消</string>
+    <string name="token_vault_delete_dialog_confirm">刪除</string>
+    <string name="token_vault_error_load_failed">載入憑證庫失敗：%1$s</string>
+    <string name="token_vault_error_save_failed">儲存失敗：%1$s</string>
+    <string name="token_vault_error_delete_failed">刪除失敗：%1$s</string>
+    <string name="token_vault_error_name_required">請填寫名稱</string>
+    <string name="token_vault_error_value_required">請填寫值</string>
+    <string name="token_vault_error_reveal_failed">無法解密該憑證</string>
 </resources>

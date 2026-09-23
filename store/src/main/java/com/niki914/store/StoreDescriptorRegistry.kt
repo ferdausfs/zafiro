@@ -7,6 +7,7 @@ object StoreDescriptorRegistry {
     const val AGENT_REGISTRY_ID = "agents.registry"
     const val LLM_CONFIGS_ID = "llm.saved_configs"
     const val AGENT_MAIN_MEMORY_ID = "agent.main.memory"
+    const val AGENT_TODO_ID = "agent.todo"
     const val TOOLS_BUILTIN_ID = "tools.builtin"
     const val TOOLS_PY_ID = "tools.py"
     const val TOOLS_MCP_SERVERS_ID = "tools.mcp.servers"
@@ -27,6 +28,11 @@ object StoreDescriptorRegistry {
             AGENT_MAIN_MEMORY_ID,
             "settings/agents/main/memory.json",
             """{"memories":[]}"""
+        ),
+        StoreDescriptor(
+            AGENT_TODO_ID,
+            "settings/agents/todo.json",
+            """{"todos":[],"updated_at":0}"""
         ),
         StoreDescriptor(
             TOOLS_BUILTIN_ID,

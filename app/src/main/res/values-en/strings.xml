@@ -122,6 +122,10 @@
     <string name="skill_import_resolve_failed">Unable to access the selected folder</string>
     <string name="ui_settings_mcp">MCP</string>
     <string name="ui_settings_mcp_summary">Connect external MCP services and tools</string>
+    <string name="ui_settings_token_vault">Token Vault</string>
+    <string name="ui_settings_token_vault_summary">Securely store GitHub, Cloudflare and other credentials for the agent</string>
+    <string name="ui_settings_agent_plan">Agent Plan</string>
+    <string name="ui_settings_agent_plan_summary">Watch the agent\'s task plan and progress in real time</string>
     <string name="ui_settings_takeover">Takeover Rules</string>
     <string name="ui_settings_takeover_summary">Route matched requests to the native assistant or Zafiro</string>
     <string name="ui_settings_execution_rules">Execution Rules</string>
@@ -157,8 +161,11 @@
     <string name="ui_settings_storage_error_clear_failed">Failed to clear: %1$s</string>
 
     <!-- Settings Detail Shared -->
-    <string name="ui_todo_page_title">Coming Soon</string>
-    <string name="ui_todo_page_description">This will be available in a future release. Stay tuned.</string>
+    <string name="ui_todo_page_title">Agent Plan</string>
+    <string name="ui_todo_page_description">While working on multi-step tasks, the agent maintains its plan here. This page refreshes in real time so you can follow the progress.</string>
+    <string name="ui_todo_page_loading">Loading plan...</string>
+    <string name="ui_todo_page_empty">No plan yet. Assign the agent a multi-step task and its plan will appear here.</string>
+    <string name="ui_todo_page_progress">%1$d of %2$d completed</string>
     <string name="unsaved_changes_dialog_title">Unsaved Changes</string>
     <string name="unsaved_changes_dialog_text">Exit without saving?</string>
     <string name="unsaved_changes_dialog_confirm_exit">Exit</string>
@@ -377,6 +384,8 @@
     <string name="ui_tool_display_screen_operation_shell">Screen Operation</string>
     <string name="ui_tool_display_screenshot">Screenshot</string>
     <string name="ui_tool_display_view_image">View Image</string>
+    <string name="ui_tool_display_todo_write">Update plan</string>
+    <string name="ui_tool_display_vault_token">Token vault</string>
     <string name="dialog_cancel">Cancel</string>
     <string name="dialog_confirm_delete">Delete</string>
     <string name="ui_settings_section_general">General</string>
@@ -429,4 +438,29 @@
     <string name="ui_theme_color_lemon">Lemon</string>
     <string name="ui_theme_color_amber">Amber</string>
     <string name="ui_theme_color_sunset">Sunset</string>
+    <string name="token_vault_page_description">Store GitHub tokens, Cloudflare API tokens and other credentials here. Values are encrypted with Android Keystore (AES-256) and never leave this device; the agent can fetch them by name through the vault_token tool (only names and notes are listed).</string>
+    <string name="token_vault_page_empty_description">No credentials yet. Tap + to add your first one (e.g. a GitHub token) so the agent can use it in tasks that require sign-in.</string>
+    <string name="token_vault_loading">Loading...</string>
+    <string name="token_vault_editor_title_create">Add credential</string>
+    <string name="token_vault_editor_title_edit">Edit credential</string>
+    <string name="token_vault_field_name">Name</string>
+    <string name="token_vault_field_name_hint">e.g. github_token</string>
+    <string name="token_vault_field_value">Value</string>
+    <string name="token_vault_field_value_hint">Paste the token or secret</string>
+    <string name="token_vault_field_value_keep_hint">Leave empty to keep the current value</string>
+    <string name="token_vault_field_note">Note (optional)</string>
+    <string name="token_vault_field_note_hint">e.g. GitHub personal access token</string>
+    <string name="token_vault_reveal_action">Reveal</string>
+    <string name="token_vault_save_action">Save</string>
+    <string name="token_vault_cancel_action">Cancel</string>
+    <string name="token_vault_delete_dialog_title">Delete credential</string>
+    <string name="token_vault_delete_dialog_text">Delete \"%1$s\"? This cannot be undone.</string>
+    <string name="token_vault_delete_dialog_cancel">Cancel</string>
+    <string name="token_vault_delete_dialog_confirm">Delete</string>
+    <string name="token_vault_error_load_failed">Failed to load the vault: %1$s</string>
+    <string name="token_vault_error_save_failed">Failed to save: %1$s</string>
+    <string name="token_vault_error_delete_failed">Failed to delete: %1$s</string>
+    <string name="token_vault_error_name_required">Name is required</string>
+    <string name="token_vault_error_value_required">Value is required</string>
+    <string name="token_vault_error_reveal_failed">Could not decrypt this credential</string>
 </resources>

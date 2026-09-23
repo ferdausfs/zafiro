@@ -118,6 +118,16 @@ fun SettingsDetailPageContent(
         return
     }
 
+    if (group == ZafiroSettingsGroup.TokenVault) {
+        TokenVaultSettingsContent()
+        return
+    }
+
+    if (group == ZafiroSettingsGroup.AgentPlan) {
+        TODOPageContent()
+        return
+    }
+
     TODOPageContent()
     return
 }

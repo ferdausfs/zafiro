@@ -81,6 +81,8 @@ private fun settingsSections(): List<SettingsSectionDefinition> {
                 ZafiroSettingsGroup.BuiltinTools,
                 ZafiroSettingsGroup.Skills,
                 ZafiroSettingsGroup.Mcp,
+                ZafiroSettingsGroup.TokenVault,
+                ZafiroSettingsGroup.AgentPlan,
             ),
         ),
         SettingsSectionDefinition(

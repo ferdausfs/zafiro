@@ -53,6 +53,8 @@ class BuiltinToolTest {
                 "screen_operation_shell",
                 "screenshot",
                 "terminal",
+                "todo_write",
+                "vault_token",
                 "view_image",
             ),
             registry.all().map { it.name }.sorted()

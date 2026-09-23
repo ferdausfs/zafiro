@@ -146,3 +146,31 @@ data class RuntimeToolValidation(
     val field: String,
     val message: String,
 )
+
+/** 凭证库条目摘要（不含明文值）：vault_token 的 list 动作只暴露 name 与 note。 */
+data class RuntimeVaultTokenSummary(
+    val name: String,
+    val note: String = "",
+    val updatedAt: Long = 0L,
+)
+
+/** Agent 计划项（todo_write / TODO 页共享的跨进程最小模型）。 */
+data class RuntimeTodoItem(
+    val content: String,
+    /** pending / in_progress / completed（非法值按 pending 处理）。 */
+    val status: String = TODO_STATUS_PENDING,
+) {
+    companion object {
+        const val TODO_STATUS_PENDING = "pending"
+        const val TODO_STATUS_IN_PROGRESS = "in_progress"
+        const val TODO_STATUS_COMPLETED = "completed"
+
+        fun normalizeStatus(raw: String?): String {
+            return when (raw?.trim()?.lowercase()) {
+                TODO_STATUS_IN_PROGRESS -> TODO_STATUS_IN_PROGRESS
+                TODO_STATUS_COMPLETED -> TODO_STATUS_COMPLETED
+                else -> TODO_STATUS_PENDING
+            }
+        }
+    }
+}

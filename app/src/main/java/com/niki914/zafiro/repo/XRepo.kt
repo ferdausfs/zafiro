@@ -11,6 +11,7 @@ import com.niki914.zafiro.chat.agentic.python.PyRuntime
 import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
 import com.niki914.zafiro.settings.MemoryMutationResult
 import com.niki914.zafiro.settings.model.RuntimeTakeoverTarget
+import com.niki914.zafiro.settings.model.RuntimeTodoItem
 import com.niki914.zafiro.settings.model.TAKEOVER_FIELD_NAME
 import com.niki914.zafiro.settings.model.TAKEOVER_FIELD_PATTERNS
 import kotlinx.coroutines.CancellationException
@@ -43,6 +44,7 @@ object XRepo {
     val customPyTools: CustomPyToolApi = CustomPyToolApi(this)
     val builtinTools: BuiltinToolApi = BuiltinToolApi(this)
     val memory: MemoryApi = MemoryApi(this)
+    val todo: TodoApi = TodoApi(this)
     val web: WebSettingsApi = WebSettingsApi()
     val executionRules: ExecutionRulesApi = ExecutionRulesApi(this)
     val takeoverRules: TakeoverRulesApi = TakeoverRulesApi(this)
@@ -66,6 +68,7 @@ object XRepo {
             if (!installedStoreForTest) {
                 this.store = store
             }
+            TokenVault.init(this.appContext!!)
         }
     }
 
@@ -820,6 +823,31 @@ class MemoryApi internal constructor(
 
     private fun normalizeMemories(memories: List<String>): List<String> {
         return memories.map(String::trim).filter(String::isNotBlank)
+    }
+}
+
+class TodoApi internal constructor(
+    private val repo: XRepo,
+) {
+    suspend fun list(): List<RuntimeTodoItem> {
+        return TodoSettingsCodec.parse(repo.readJson(StoreDescriptorRegistry.AGENT_TODO_ID))
+    }
+
+    suspend fun updatedAt(): Long {
+        val json = repo.readJson(StoreDescriptorRegistry.AGENT_TODO_ID)
+        return (SettingsJsonCodecUtils.parseObject(json)["updated_at"]
+            as? kotlinx.serialization.json.JsonPrimitive)?.longOrNull ?: 0L
+    }
+
+    /** 整表替换（todo_write 语义）；空列表允许（清空计划）。 */
+    suspend fun replaceAll(items: List<RuntimeTodoItem>) {
+        val normalized = items.map { item ->
+            item.copy(
+                content = item.content.trim(),
+                status = RuntimeTodoItem.normalizeStatus(item.status),
+            )
+        }.filter { it.content.isNotEmpty() }
+        repo.writeJson(StoreDescriptorRegistry.AGENT_TODO_ID, TodoSettingsCodec.encode(normalized))
     }
 }
 

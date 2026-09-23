@@ -35,6 +35,8 @@ class SettingsViewModelTest {
             listOf(
                 ZafiroSettingsGroup.BuiltinTools,
                 ZafiroSettingsGroup.Skills,
+                ZafiroSettingsGroup.TokenVault,
+                ZafiroSettingsGroup.AgentPlan,
             ),
             state.sections[2].groups,
         )

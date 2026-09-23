@@ -9,6 +9,8 @@ import com.niki914.zafiro.settings.model.RuntimeLlmConfig
 import com.niki914.zafiro.settings.model.RuntimeLoadedSkill
 import com.niki914.zafiro.settings.model.RuntimeMcpServer
 import com.niki914.zafiro.settings.model.RuntimeSkillMetadata
+import com.niki914.zafiro.settings.model.RuntimeTodoItem
+import com.niki914.zafiro.settings.model.RuntimeVaultTokenSummary
 import com.niki914.zafiro.settings.model.RuntimeToolValidation
 
 class XRepoRuntimeGateway(
@@ -93,5 +95,21 @@ class XRepoRuntimeGateway(
 
     override suspend fun listExecutionRules(): List<RuntimeExecutionRule> {
         return repo.executionRules.list()
+    }
+
+    override suspend fun listVaultTokens(): List<RuntimeVaultTokenSummary> {
+        return TokenVault.list()
+    }
+
+    override suspend fun vaultTokenValue(name: String): String? {
+        return TokenVault.value(name)
+    }
+
+    override suspend fun readTodoItems(): List<RuntimeTodoItem> {
+        return repo.todo.list()
+    }
+
+    override suspend fun writeTodoItems(items: List<RuntimeTodoItem>) {
+        repo.todo.replaceAll(items)
     }
 }

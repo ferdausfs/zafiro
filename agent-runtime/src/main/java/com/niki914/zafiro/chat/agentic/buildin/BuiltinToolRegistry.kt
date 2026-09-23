@@ -12,6 +12,8 @@ import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenOperationAccessibility
 import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenOperationShellBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenshotBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.TerminalBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.TodoWriteBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.TokenVaultBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ViewImageBuiltin
 
 class BuiltinToolRegistry(
@@ -39,6 +41,8 @@ class BuiltinToolRegistry(
                 ScreenOperationShellBuiltin(),
                 ScreenshotBuiltin(),
                 ViewImageBuiltin(),
+                TokenVaultBuiltin(),
+                TodoWriteBuiltin(),
             )
         )
     }

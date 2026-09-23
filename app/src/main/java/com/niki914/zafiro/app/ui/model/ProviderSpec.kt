@@ -48,6 +48,7 @@ object ProviderSpecs {
         SiliconFlowSpec,
         OpenCodeSpec,
         CommandCodeSpec,
+        OllamaSpec,
     )
 
     fun find(providerId: String?): ProviderSpec {
@@ -233,6 +234,28 @@ private data object OpenCodeSpec : ProviderSpec {
             lightContainerColorRes = R.color.provider_opencode_button_light_container,
             darkContentColorRes = R.color.provider_opencode_button_dark_content,
             lightContentColorRes = R.color.provider_opencode_button_light_content,
+        ),
+    )
+}
+
+private data object OllamaSpec : ProviderSpec {
+    override val id: String = "ollama"
+    override val brandName: String = "Ollama"
+
+    // Ollama Cloud 的 OpenAI 兼容端点；本机/自建 Ollama 与任意 OpenAI 兼容网关
+    // 通过自定义 base URL 接入（allowsCustomEndpointInNewConfig = true）。
+    override val officialEndpoint: String = "https://ollama.com/v1/chat/completions"
+    override val exampleModelId: String = "qwen3-coder-480b-cloud"
+    override val allowsCustomEndpointInNewConfig: Boolean = true
+    override val defaultProtocol: String = "openai-chat-completions"
+    override val iconRes: Int = R.drawable.ollama
+    override val tintIcon: Boolean = true
+    override val visualTokens: ProviderVisualTokens = ProviderVisualTokens(
+        button = ProviderButtonTokens(
+            darkContainerColorRes = R.color.provider_ollama_button_dark_container,
+            lightContainerColorRes = R.color.provider_ollama_button_light_container,
+            darkContentColorRes = R.color.provider_ollama_button_dark_content,
+            lightContentColorRes = R.color.provider_ollama_button_light_content,
         ),
     )
 }

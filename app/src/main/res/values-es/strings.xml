@@ -122,6 +122,10 @@
     <string name="skill_import_resolve_failed">No se puede acceder a la carpeta seleccionada</string>
     <string name="ui_settings_mcp">MCP</string>
     <string name="ui_settings_mcp_summary">Conectar servicios y herramientas MCP externos</string>
+    <string name="ui_settings_token_vault">Bóveda de tokens</string>
+    <string name="ui_settings_token_vault_summary">Guarda credenciales de GitHub, Cloudflare y más para el agente</string>
+    <string name="ui_settings_agent_plan">Plan del agente</string>
+    <string name="ui_settings_agent_plan_summary">Sigue el plan y el progreso del agente en tiempo real</string>
     <string name="ui_settings_takeover">Reglas de control</string>
     <string name="ui_settings_takeover_summary">Configurar qué entradas procesa el asistente nativo o Zafiro</string>
     <string name="ui_settings_execution_rules">Reglas de ejecución</string>
@@ -157,8 +161,11 @@
     <string name="ui_settings_storage_error_clear_failed">No se pudo borrar: %1$s</string>
 
     <!-- Settings Detail Shared -->
-    <string name="ui_todo_page_title">Función en desarrollo</string>
-    <string name="ui_todo_page_description">Estará disponible en próximas versiones.</string>
+    <string name="ui_todo_page_title">Plan del agente</string>
+    <string name="ui_todo_page_description">Al ejecutar tareas de varios pasos, el agente mantiene su plan aquí. Esta página se actualiza en tiempo real para que puedas seguir el progreso.</string>
+    <string name="ui_todo_page_loading">Cargando el plan...</string>
+    <string name="ui_todo_page_empty">Aún no hay plan. Encarga al agente una tarea de varios pasos y su plan aparecerá aquí.</string>
+    <string name="ui_todo_page_progress">%1$d de %2$d completados</string>
     <string name="unsaved_changes_dialog_title">Cambios sin guardar</string>
     <string name="unsaved_changes_dialog_text">¿Está seguro de que desea salir?</string>
     <string name="unsaved_changes_dialog_confirm_exit">Aceptar</string>
@@ -377,6 +384,8 @@
     <string name="ui_tool_display_screen_operation_shell">Operaciones de pantalla</string>
     <string name="ui_tool_display_screenshot">Captura de pantalla</string>
     <string name="ui_tool_display_view_image">Ver imagen</string>
+    <string name="ui_tool_display_todo_write">Actualizar plan</string>
+    <string name="ui_tool_display_vault_token">Bóveda de tokens</string>
     <string name="dialog_cancel">Cancelar</string>
     <string name="dialog_confirm_delete">Eliminar</string>
     <string name="ui_settings_section_general">General</string>
@@ -429,4 +438,29 @@
     <string name="ui_theme_color_lemon">Limón</string>
     <string name="ui_theme_color_amber">Ámbar</string>
     <string name="ui_theme_color_sunset">Atardecer</string>
+    <string name="token_vault_page_description">Guarda aquí tokens de GitHub, tokens de API de Cloudflare y otras credenciales. Los valores se cifran con Android Keystore (AES-256) y nunca salen de este dispositivo; el agente puede obtenerlos por nombre con la herramienta vault_token (solo se listan nombres y notas).</string>
+    <string name="token_vault_page_empty_description">Aún no hay credenciales. Toca + para añadir la primera (por ejemplo, un token de GitHub) y el agente podrá usarla en tareas que requieran inicio de sesión.</string>
+    <string name="token_vault_loading">Cargando...</string>
+    <string name="token_vault_editor_title_create">Añadir credencial</string>
+    <string name="token_vault_editor_title_edit">Editar credencial</string>
+    <string name="token_vault_field_name">Nombre</string>
+    <string name="token_vault_field_name_hint">p. ej. github_token</string>
+    <string name="token_vault_field_value">Valor</string>
+    <string name="token_vault_field_value_hint">Pega el token o secreto</string>
+    <string name="token_vault_field_value_keep_hint">Deja vacío para conservar el valor actual</string>
+    <string name="token_vault_field_note">Nota (opcional)</string>
+    <string name="token_vault_field_note_hint">p. ej. token de acceso personal de GitHub</string>
+    <string name="token_vault_reveal_action">Mostrar</string>
+    <string name="token_vault_save_action">Guardar</string>
+    <string name="token_vault_cancel_action">Cancelar</string>
+    <string name="token_vault_delete_dialog_title">Eliminar credencial</string>
+    <string name="token_vault_delete_dialog_text">¿Eliminar \"%1$s\"? Esta acción no se puede deshacer.</string>
+    <string name="token_vault_delete_dialog_cancel">Cancelar</string>
+    <string name="token_vault_delete_dialog_confirm">Eliminar</string>
+    <string name="token_vault_error_load_failed">No se pudo cargar la bóveda: %1$s</string>
+    <string name="token_vault_error_save_failed">No se pudo guardar: %1$s</string>
+    <string name="token_vault_error_delete_failed">No se pudo eliminar: %1$s</string>
+    <string name="token_vault_error_name_required">El nombre es obligatorio</string>
+    <string name="token_vault_error_value_required">El valor es obligatorio</string>
+    <string name="token_vault_error_reveal_failed">No se pudo descifrar esta credencial</string>
 </resources>

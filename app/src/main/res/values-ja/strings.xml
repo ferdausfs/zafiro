@@ -121,6 +121,10 @@
     <string name="skill_import_resolve_failed">選択したフォルダにアクセスできません</string>
     <string name="ui_settings_mcp">MCP</string>
     <string name="ui_settings_mcp_summary">外部 MCP サービスとツールを連携</string>
+    <string name="ui_settings_token_vault">トークン保管庫</string>
+    <string name="ui_settings_token_vault_summary">GitHub や Cloudflare などの認証情報を安全に保存し、エージェントが利用できます</string>
+    <string name="ui_settings_agent_plan">エージェント計画</string>
+    <string name="ui_settings_agent_plan_summary">エージェントのタスク計画と進捗をリアルタイムで確認</string>
     <string name="ui_settings_takeover">制御ルール</string>
     <string name="ui_settings_takeover_summary">入力に応じてネイティブアシスタントと Zafiro のどちらが応答するかを設定</string>
     <string name="ui_settings_execution_rules">実行ルール</string>
@@ -156,8 +160,11 @@
     <string name="ui_settings_storage_error_clear_failed">削除に失敗しました：%1$s</string>
 
     <!-- Settings Detail Shared -->
-    <string name="ui_todo_page_title">開発中の機能です</string>
-    <string name="ui_todo_page_description">今後のバージョンで対応予定です。お楽しみに。</string>
+    <string name="ui_todo_page_title">エージェント計画</string>
+    <string name="ui_todo_page_description">複数ステップのタスク実行中、エージェントはここで計画を管理します。このページはリアルタイムで更新され、進捗をいつでも確認できます。</string>
+    <string name="ui_todo_page_loading">計画を読み込み中...</string>
+    <string name="ui_todo_page_empty">計画はまだありません。複数ステップのタスクを依頼すると、ここに計画が表示されます。</string>
+    <string name="ui_todo_page_progress">%2$d 件中 %1$d 件完了</string>
     <string name="unsaved_changes_dialog_title">未保存の変更があります</string>
     <string name="unsaved_changes_dialog_text">終了してもよろしいですか？</string>
     <string name="unsaved_changes_dialog_confirm_exit">終了</string>
@@ -376,6 +383,8 @@
     <string name="ui_tool_display_screen_operation_shell">画面操作</string>
     <string name="ui_tool_display_screenshot">スクリーンショット</string>
     <string name="ui_tool_display_view_image">画像を表示</string>
+    <string name="ui_tool_display_todo_write">計画を更新</string>
+    <string name="ui_tool_display_vault_token">トークン保管庫</string>
     <string name="dialog_cancel">キャンセル</string>
     <string name="dialog_confirm_delete">削除</string>
     <string name="ui_settings_section_general">一般</string>
@@ -428,4 +437,29 @@
     <string name="ui_theme_color_lemon">レモン</string>
     <string name="ui_theme_color_amber">アンバー</string>
     <string name="ui_theme_color_sunset">サンセット</string>
+    <string name="token_vault_page_description">GitHub トークンや Cloudflare API トークンなどの認証情報をここに保存します。値は Android Keystore（AES-256）で暗号化され、この端末の外に出ることはありません。エージェントは vault_token ツールで名前指定して取得できます（一覧には名前とメモのみ表示）。</string>
+    <string name="token_vault_page_empty_description">まだ認証情報がありません。右上の + をタップして最初の 1 件（例：GitHub トークン）を追加すると、ログインが必要なタスクでエージェントが利用できます。</string>
+    <string name="token_vault_loading">読み込み中...</string>
+    <string name="token_vault_editor_title_create">認証情報を追加</string>
+    <string name="token_vault_editor_title_edit">認証情報を編集</string>
+    <string name="token_vault_field_name">名前</string>
+    <string name="token_vault_field_name_hint">例：github_token</string>
+    <string name="token_vault_field_value">値</string>
+    <string name="token_vault_field_value_hint">トークンやシークレットを貼り付け</string>
+    <string name="token_vault_field_value_keep_hint">空欄のままなら現在の値を維持</string>
+    <string name="token_vault_field_note">メモ（任意）</string>
+    <string name="token_vault_field_note_hint">例：GitHub 個人アクセストークン</string>
+    <string name="token_vault_reveal_action">表示</string>
+    <string name="token_vault_save_action">保存</string>
+    <string name="token_vault_cancel_action">キャンセル</string>
+    <string name="token_vault_delete_dialog_title">認証情報を削除</string>
+    <string name="token_vault_delete_dialog_text">「%1$s」を削除しますか？この操作は取り消せません。</string>
+    <string name="token_vault_delete_dialog_cancel">キャンセル</string>
+    <string name="token_vault_delete_dialog_confirm">削除</string>
+    <string name="token_vault_error_load_failed">保管庫の読み込みに失敗しました：%1$s</string>
+    <string name="token_vault_error_save_failed">保存に失敗しました：%1$s</string>
+    <string name="token_vault_error_delete_failed">削除に失敗しました：%1$s</string>
+    <string name="token_vault_error_name_required">名前を入力してください</string>
+    <string name="token_vault_error_value_required">値を入力してください</string>
+    <string name="token_vault_error_reveal_failed">この認証情報を復号できません</string>
 </resources>
