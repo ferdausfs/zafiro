@@ -128,6 +128,15 @@ fun SettingsDetailPageContent(
         return
     }
 
+    if (group == ZafiroSettingsGroup.SystemIntegration) {
+        SystemIntegrationSettingsContent(
+            onOpenAutomation = {
+                onPush(com.niki914.zafiro.app.ui.nav.SettingsDetailPage(ZafiroSettingsGroup.Automation))
+            },
+        )
+        return
+    }
+
     if (group == ZafiroSettingsGroup.Tasks) {
         BackgroundTasksSettingsContent()
         return

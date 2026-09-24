@@ -17,6 +17,8 @@ import com.niki914.zafiro.app.R
 import com.niki914.zafiro.chat.ActiveTurnStore
 import com.niki914.zafiro.chat.LLMController
 import com.niki914.zafiro.chat.LlmStreamEvent
+import com.niki914.zafiro.repo.AutomationBatteryEvent
+import com.niki914.zafiro.repo.AutomationLocationMode
 import com.niki914.zafiro.repo.AutomationTrigger
 import com.niki914.zafiro.repo.AutomationTriggerAction
 import com.niki914.zafiro.repo.AutomationTriggerSource
@@ -27,6 +29,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 
@@ -38,6 +41,8 @@ data class TriggerHit(
     val title: String,
     val text: String,
     val filePath: String = "",
+    /** v1.7.0：事件附加上下文（电池电量、触发时刻、坐标等）。 */
+    val extra: String = "",
 )
 
 /**
@@ -61,11 +66,22 @@ object AutomationHub {
     private const val AGENT_TURN_TIMEOUT_MS = 5 * 60 * 1000L
     private const val BUSY_WAIT_ATTEMPTS = 15
     private const val BUSY_WAIT_INTERVAL_MS = 4_000L
+    // v1.7.0
+    private const val TIME_TICK_INTERVAL_MS = 30_000L
+    private const val FULL_BATTERY_PERCENT = 95
 
     private var appContext: Context? = null
     private var scope: CoroutineScope? = null
     private var consumerJob: Job? = null
     private var downloadObserver: DownloadObserver? = null
+    // v1.7.0：电池/定时/地点事件源
+    private var batteryReceiver: android.content.BroadcastReceiver? = null
+    private var timeTickerJob: Job? = null
+    private var locationListener: android.location.LocationListener? = null
+    private var lastBatteryState: BatteryState? = null
+    private val locationInsideState = HashMap<String, Boolean>()
+
+    private data class BatteryState(val level: Int, val charging: Boolean)
 
     private val queue = Channel<TriggerHit>(Channel.UNLIMITED)
     private val lastFiredAtMs = HashMap<String, Long>()
@@ -115,6 +131,9 @@ object AutomationHub {
                 _triggers.value = triggers
                 _armedTriggerCount.value = triggers.count { it.enabled }
                 syncDownloadObserver(ctx, triggers)
+                syncBatteryReceiver(ctx, triggers)
+                syncTimeTicker(triggers)
+                syncLocationWatch(ctx, triggers)
                 Logger.d(
                     LOG_TAG,
                     "reloadTriggers total=${triggers.size} armed=${_armedTriggerCount.value}"
@@ -139,6 +158,222 @@ object AutomationHub {
             downloadObserver = null
             Logger.i(LOG_TAG, "DownloadObserver stopped")
         }
+    }
+
+    // ------------------------------------------- v1.7.0 event source syncing
+
+    /** 电池事件源：有 BATTERY 触发器时注册 ACTION_BATTERY_CHANGED 监听。 */
+    private fun syncBatteryReceiver(context: Context, triggers: List<AutomationTrigger>) {
+        val needBattery = triggers.any { it.enabled && it.source == AutomationTriggerSource.BATTERY }
+        if (needBattery && batteryReceiver == null) {
+            val receiver = object : android.content.BroadcastReceiver() {
+                override fun onReceive(ctx: Context, intent: android.content.Intent) {
+                    if (intent.action != android.content.Intent.ACTION_BATTERY_CHANGED) return
+                    val level = intent.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1)
+                    val scale = intent.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, 100)
+                    val plugged = intent.getIntExtra(android.os.BatteryManager.EXTRA_PLUGGED, 0)
+                    if (level < 0 || scale <= 0) return
+                    onBatteryChanged(level * 100 / scale, plugged != 0)
+                }
+            }
+            runCatching {
+                androidx.core.content.ContextCompat.registerReceiver(
+                    context,
+                    receiver,
+                    android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED),
+                    androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+                )
+            }
+            batteryReceiver = receiver
+            Logger.i(LOG_TAG, "battery receiver registered")
+        } else if (!needBattery && batteryReceiver != null) {
+            runCatching { context.unregisterReceiver(batteryReceiver!!) }
+            batteryReceiver = null
+            lastBatteryState = null
+            Logger.i(LOG_TAG, "battery receiver unregistered")
+        }
+    }
+
+    /** 定时事件源：有 TIME 触发器时启动 30s 粒度的分钟匹配协程。 */
+    private fun syncTimeTicker(triggers: List<AutomationTrigger>) {
+        val needTime = triggers.any { it.enabled && it.source == AutomationTriggerSource.TIME }
+        if (needTime && timeTickerJob == null) {
+            timeTickerJob = scope?.launch {
+                Logger.i(LOG_TAG, "time ticker started")
+                while (isActive) {
+                    delay(TIME_TICK_INTERVAL_MS)
+                    runCatching { onTimeTick() }
+                }
+            }
+        } else if (!needTime && timeTickerJob != null) {
+            timeTickerJob?.cancel()
+            timeTickerJob = null
+            Logger.i(LOG_TAG, "time ticker stopped")
+        }
+    }
+
+    /** 地点事件源：有 LOCATION 触发器且权限就绪时请求位置更新。 */
+    private fun syncLocationWatch(context: Context, triggers: List<AutomationTrigger>) {
+        val needLocation = triggers.any { it.enabled && it.source == AutomationTriggerSource.LOCATION }
+        val lm = context.getSystemService(Context.LOCATION_SERVICE) as? android.location.LocationManager
+        val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+            context, android.Manifest.permission.ACCESS_FINE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+        if (needLocation && locationListener == null) {
+            if (lm == null || !hasPermission) {
+                appendLog("[location] waiting for fine-location permission")
+                Logger.w(LOG_TAG, "location triggers armed but permission missing")
+                return
+            }
+            val listener = android.location.LocationListener { location ->
+                onLocationUpdate(location.latitude, location.longitude)
+            }
+            locationListener = listener
+            runCatching {
+                val providers = buildList {
+                    if (lm.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER)) {
+                        add(android.location.LocationManager.GPS_PROVIDER)
+                    }
+                    if (lm.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER)) {
+                        add(android.location.LocationManager.NETWORK_PROVIDER)
+                    }
+                }
+                if (providers.isEmpty()) {
+                    appendLog("[location] no location provider enabled")
+                    return
+                }
+                providers.forEach { provider ->
+                    lm.requestLocationUpdates(provider, 60_000L, 30f, listener, context.mainLooper)
+                }
+                // 先用最近一次已知位置做一次即时判定
+                lm.getLastKnownLocation(providers.first())?.let { last ->
+                    onLocationUpdate(last.latitude, last.longitude)
+                }
+            }
+            appendLog("[location] watching ${_triggers.value.count {
+                it.enabled && it.source == AutomationTriggerSource.LOCATION
+            }} trigger(s)")
+            Logger.i(LOG_TAG, "location watch started")
+        } else if (!needLocation && locationListener != null) {
+            runCatching { lm?.removeUpdates(locationListener!!) }
+            locationListener = null
+            locationInsideState.clear()
+            Logger.i(LOG_TAG, "location watch stopped")
+        }
+    }
+
+    // ------------------------------------------ v1.7.0 event entry points
+
+    /** 电池状态变化入口（BroadcastReceiver 回调，主线程，快速返回）。 */
+    fun onBatteryChanged(level: Int, charging: Boolean) {
+        if (!_serviceRunning.value) return
+        val previous = lastBatteryState
+        lastBatteryState = BatteryState(level, charging)
+        if (previous == null) return // 首个 sticky 广播只初始化状态，不触发
+
+        val fired = _triggers.value.filter { trigger ->
+            trigger.enabled && trigger.source == AutomationTriggerSource.BATTERY && when (trigger.batteryEvent) {
+                AutomationBatteryEvent.LOW ->
+                    !charging && level <= trigger.batteryLevel &&
+                            !(previous.charging == false && previous.level <= trigger.batteryLevel)
+
+                AutomationBatteryEvent.CHARGING ->
+                    charging && !previous.charging
+
+                AutomationBatteryEvent.FULL ->
+                    charging && level >= FULL_BATTERY_PERCENT &&
+                            !(previous.charging && previous.level >= FULL_BATTERY_PERCENT)
+
+                AutomationBatteryEvent.OKAY ->
+                    !charging && level > trigger.batteryLevel &&
+                            previous.level <= trigger.batteryLevel && !previous.charging
+            }
+        }
+        fired.forEach { trigger ->
+            enqueue(
+                TriggerHit(
+                    trigger = trigger,
+                    packageName = "",
+                    appLabel = "Battery",
+                    title = "$level%",
+                    text = if (charging) "charging" else "on battery",
+                    extra = "level: $level%${if (charging) " (charging)" else ""}",
+                )
+            )
+        }
+    }
+
+    /** 定时入口（30s 粒度协程回调）；分钟匹配 + 星期过滤。 */
+    fun onTimeTick() {
+        if (!_serviceRunning.value) return
+        val now = java.util.Calendar.getInstance()
+        val hhmm = String.format(
+            java.util.Locale.US, "%02d:%02d", now.get(java.util.Calendar.HOUR_OF_DAY), now.get(java.util.Calendar.MINUTE)
+        )
+        val dayOfWeek = (now.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7 + 1 // 1=Mon..7=Sun
+        val fired = _triggers.value.filter { trigger ->
+            trigger.enabled && trigger.source == AutomationTriggerSource.TIME &&
+                    trigger.timeOfDay == hhmm &&
+                    (trigger.daysOfWeek.isEmpty() || dayOfWeek in trigger.daysOfWeek)
+        }
+        fired.forEach { trigger ->
+            enqueue(
+                TriggerHit(
+                    trigger = trigger,
+                    packageName = "",
+                    appLabel = "Schedule",
+                    title = hhmm,
+                    text = "scheduled time reached",
+                    extra = "time: $hhmm (day $dayOfWeek)",
+                )
+            )
+        }
+    }
+
+    /** 位置更新入口；ENTER/EXIT 通过进/出状态翻转判定（带迟滞）。 */
+    fun onLocationUpdate(latitude: Double, longitude: Double) {
+        if (!_serviceRunning.value) return
+        _triggers.value.filter { it.enabled && it.source == AutomationTriggerSource.LOCATION }
+            .forEach { trigger ->
+                val distance = distanceMeters(
+                    lat1 = latitude, lon1 = longitude,
+                    lat2 = trigger.latitude, lon2 = trigger.longitude,
+                )
+                val nowInside = distance <= trigger.radiusMeters
+                val wasInside = locationInsideState[trigger.id]
+                locationInsideState[trigger.id] = nowInside
+                val crossed = when (trigger.locationMode) {
+                    AutomationLocationMode.ENTER -> nowInside && wasInside == false
+                    AutomationLocationMode.EXIT -> !nowInside && wasInside == true
+                }
+                if (crossed) {
+                    enqueue(
+                        TriggerHit(
+                            trigger = trigger,
+                            packageName = "",
+                            appLabel = "Location",
+                            title = trigger.locationMode.name.lowercase(),
+                            text = "%.0fm from target".format(java.util.Locale.US, distance),
+                            extra = "mode: ${trigger.locationMode.name.lowercase()} · " +
+                                    "distance: %.0fm (radius ${trigger.radiusMeters}m) · " +
+                                    "coords: %.4f, %.4f"
+                                        .format(java.util.Locale.US, distance, latitude, longitude),
+                        )
+                    )
+                }
+            }
+    }
+
+    /** Haversine 距离（米）。 */
+    private fun distanceMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val r = 6371000.0
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2)
+        return r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
     }
 
     // ------------------------------------------------------- event sources
@@ -379,6 +614,25 @@ object AutomationHub {
                     appendLine("source: new file in Download folder")
                     append("file: ${hit.filePath}")
                 }
+
+            AutomationTriggerSource.BATTERY ->
+                buildString {
+                    appendLine("source: device battery event")
+                    appendLine("trigger type: ${hit.trigger.batteryEvent.name.lowercase()} (threshold ${hit.trigger.batteryLevel}%)")
+                    append("current state: ${hit.extra}")
+                }
+
+            AutomationTriggerSource.TIME ->
+                buildString {
+                    appendLine("source: scheduled time trigger")
+                    append("${hit.extra}")
+                }
+
+            AutomationTriggerSource.LOCATION ->
+                buildString {
+                    appendLine("source: location geofence event")
+                    append("${hit.extra}")
+                }
         }
         val instruction = hit.trigger.prompt.ifBlank {
             "Analyze the event and take any obviously helpful action."
@@ -391,8 +645,9 @@ object AutomationHub {
             appendLine(instruction)
             appendLine()
             appendLine(
-                "Act autonomously with your tools (screen_operation_accessibility to open " +
-                        "apps and operate UI, execute_python for files/data, notify to report, " +
+                "Act autonomously with your tools (system_data for device/contacts/calendar " +
+                        "data, screen_operation_accessibility to open apps and operate UI, " +
+                        "execute_python and file_manager for files/data, notify to report, " +
                         "launch_app/open_uri to navigate). Stay minimal and safe; if the task " +
                         "cannot be completed, state why and stop."
             )

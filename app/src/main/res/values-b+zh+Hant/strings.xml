@@ -542,4 +542,49 @@
     <string name="ui_home_attach_photo">圖片</string>
     <string name="ui_home_attach_document">文件</string>
     <string name="dialog_done">完成</string>
+
+    <!-- v1.7.0 System-Integrated Autonomous Agent -->
+    <string name="ui_settings_system_integration">系統整合</string>
+    <string name="ui_settings_system_integration_summary">直連系統 API、即時視覺、檔案編排、事件驅動自主執行</string>
+    <string name="sys_page_description">將 Agent 升級為系統級整合：API 優先（通訊錄/日曆/電池/設定直讀，100% 可靠）、即時視覺（介面變化即取新影格）、全盤檔案編排（批量整理/PDF 合併/備份）、事件驅動自主執行（電量/定時/地點觸發）。</string>
+    <string name="sys_perm_contacts">通訊錄權限</string>
+    <string name="sys_perm_calendar">日曆權限</string>
+    <string name="sys_perm_location">精確定位權限</string>
+    <string name="sys_perm_ok">已授權</string>
+    <string name="sys_perm_missing">未授權，點按授權</string>
+    <string name="sys_api_desc">system_data 工具直接呼叫 Android System API 讀取資料，無需開啟任何應用；未授權時 Agent 會引導你在系統設定中授予。</string>
+    <string name="sys_vision_accessibility">無障礙服務（即時取影格前置條件）</string>
+    <string name="sys_vision_accessibility_ok">已開啟，即時視覺可用</string>
+    <string name="sys_vision_accessibility_missing">未開啟，點按前往系統設定</string>
+    <string name="sys_vision_desc">live_screen 工具背後是連續感知流：介面一變化自動採新影格，靜止時週期兜底刷新。處理動畫、遊戲等動態介面時比靜態截圖更快更準。</string>
+    <string name="sys_files_all_access">所有檔案存取權</string>
+    <string name="sys_files_all_access_missing">未授權，點按前往系統設定</string>
+    <string name="sys_files_desc">file_manager 與 pdf_tools 支援全盤檔案編排：批量歸類、移動重新命名、搜尋、壓縮備份、PDF 合併拆分——免 root、結果結構化。</string>
+    <string name="sys_events_open_automation">事件驅動觸發器管理</string>
+    <string name="sys_events_armed_count">已啟用觸發器：%1$d 個</string>
+    <string name="automation_source_battery">電池事件</string>
+    <string name="automation_source_time">定時</string>
+    <string name="automation_source_location">地點（進/出）</string>
+    <string name="automation_field_battery_level_hint">電量閾值百分比（如 20）</string>
+    <string name="automation_field_battery_event">電池事件（點按切換）</string>
+    <string name="automation_battery_event_low">低電量</string>
+    <string name="automation_battery_event_charging">開始充電</string>
+    <string name="automation_battery_event_full">充滿</string>
+    <string name="automation_battery_event_okay">電量回升</string>
+    <string name="automation_field_time_hint">觸發時刻 HH:mm（如 07:30）</string>
+    <string name="automation_field_days_hint">星期幾（1=週一…7=週日，逗號分隔；留空=每天）</string>
+    <string name="automation_field_lat_hint">目標緯度（如 23.8103）</string>
+    <string name="automation_field_lng_hint">目標經度（如 90.4125）</string>
+    <string name="automation_field_radius_hint">半徑（公尺，30–10000）</string>
+    <string name="automation_field_loc_mode">觸發方式（點按切換）</string>
+    <string name="automation_location_enter">進入該區域時</string>
+    <string name="automation_location_exit">離開該區域時</string>
+    <string name="automation_error_time_required">請填寫有效的觸發時刻（HH:mm）</string>
+    <string name="automation_error_coords_required">請填寫有效的緯度（-90~90）與經度（-180~180）</string>
+    <string name="builtin_tool_group_system_data">系統資料（API 直讀）</string>
+    <string name="builtin_tool_group_system_data_summary">直連 System API 讀取通訊錄、日曆、電池、設定、網路——API 優先，免 UI 自動化</string>
+    <string name="builtin_tool_group_live_vision">即時視覺</string>
+    <string name="builtin_tool_group_live_vision_summary">連續螢幕感知流，動態介面每個影格都是「此刻」</string>
+    <string name="builtin_tool_group_file_ops">檔案編排</string>
+    <string name="builtin_tool_group_file_ops_summary">全盤檔案管理、批量歸類、壓縮備份與 PDF 合併拆分</string>
 </resources>

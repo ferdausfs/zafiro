@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.niki914.logging.Logger
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.repo.AutomationBatteryEvent
+import com.niki914.zafiro.repo.AutomationLocationMode
 import com.niki914.zafiro.repo.AutomationTrigger
 import com.niki914.zafiro.repo.AutomationTriggerAction
 import com.niki914.zafiro.repo.AutomationTriggerSource
@@ -26,6 +28,15 @@ data class AutomationTriggerItem(
     val action: AutomationTriggerAction,
     val prompt: String,
     val cooldownSeconds: Int,
+    // v1.7.0
+    val batteryLevel: Int = 20,
+    val batteryEvent: AutomationBatteryEvent = AutomationBatteryEvent.LOW,
+    val timeOfDay: String = "",
+    val daysOfWeek: Set<Int> = emptySet(),
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
+    val radiusMeters: Int = 200,
+    val locationMode: AutomationLocationMode = AutomationLocationMode.ENTER,
 )
 
 /** 触发器编辑对话框状态（创建或编辑）。 */
@@ -40,8 +51,18 @@ data class AutomationTriggerEditState(
     val action: AutomationTriggerAction = AutomationTriggerAction.AGENT,
     val prompt: String = "",
     val cooldownInput: String = AutomationTrigger.DEFAULT_COOLDOWN_SECONDS.toString(),
+    // v1.7.0
+    val batteryLevelInput: String = "20",
+    val batteryEvent: AutomationBatteryEvent = AutomationBatteryEvent.LOW,
+    val timeOfDayInput: String = "",
+    val daysOfWeekInput: String = "",
+    val latitudeInput: String = "",
+    val longitudeInput: String = "",
+    val radiusInput: String = "200",
+    val locationMode: AutomationLocationMode = AutomationLocationMode.ENTER,
     @param:StringRes val nameErrorResId: Int? = null,
     @param:StringRes val promptErrorResId: Int? = null,
+    @param:StringRes val sourceFieldErrorResId: Int? = null,
 )
 
 data class AutomationSettingsUiState(
@@ -68,6 +89,16 @@ sealed interface AutomationSettingsIntent {
     data class ActionChanged(val value: AutomationTriggerAction) : AutomationSettingsIntent
     data class PromptChanged(val value: String) : AutomationSettingsIntent
     data class CooldownChanged(val value: String) : AutomationSettingsIntent
+
+    // v1.7.0 新字段
+    data class BatteryLevelChanged(val value: String) : AutomationSettingsIntent
+    data class BatteryEventChanged(val value: AutomationBatteryEvent) : AutomationSettingsIntent
+    data class TimeOfDayChanged(val value: String) : AutomationSettingsIntent
+    data class DaysOfWeekChanged(val value: String) : AutomationSettingsIntent
+    data class LatitudeChanged(val value: String) : AutomationSettingsIntent
+    data class LongitudeChanged(val value: String) : AutomationSettingsIntent
+    data class RadiusChanged(val value: String) : AutomationSettingsIntent
+    data class LocationModeChanged(val value: AutomationLocationMode) : AutomationSettingsIntent
 
     data object Save : AutomationSettingsIntent
     data class RequestDelete(val index: Int) : AutomationSettingsIntent
@@ -143,6 +174,67 @@ class AutomationSettingsViewModel :
                 copy(editState = editState?.copy(cooldownInput = intent.value))
             }
 
+            // v1.7.0 新字段
+            is AutomationSettingsIntent.BatteryLevelChanged -> updateState {
+                copy(
+                    editState = editState?.copy(
+                        batteryLevelInput = intent.value.filter(Char::isDigit).take(3),
+                        sourceFieldErrorResId = null,
+                    )
+                )
+            }
+
+            is AutomationSettingsIntent.BatteryEventChanged -> updateState {
+                copy(editState = editState?.copy(batteryEvent = intent.value))
+            }
+
+            is AutomationSettingsIntent.TimeOfDayChanged -> updateState {
+                copy(
+                    editState = editState?.copy(
+                        timeOfDayInput = intent.value.filter { it.isDigit() || it == ':' }.take(5),
+                        sourceFieldErrorResId = null,
+                    )
+                )
+            }
+
+            is AutomationSettingsIntent.DaysOfWeekChanged -> updateState {
+                copy(
+                    editState = editState?.copy(
+                        daysOfWeekInput = intent.value,
+                    )
+                )
+            }
+
+            is AutomationSettingsIntent.LatitudeChanged -> updateState {
+                copy(
+                    editState = editState?.copy(
+                        latitudeInput = intent.value.take(12),
+                        sourceFieldErrorResId = null,
+                    )
+                )
+            }
+
+            is AutomationSettingsIntent.LongitudeChanged -> updateState {
+                copy(
+                    editState = editState?.copy(
+                        longitudeInput = intent.value.take(12),
+                        sourceFieldErrorResId = null,
+                    )
+                )
+            }
+
+            is AutomationSettingsIntent.RadiusChanged -> updateState {
+                copy(
+                    editState = editState?.copy(
+                        radiusInput = intent.value.filter(Char::isDigit).take(5),
+                    )
+                )
+            }
+
+            is AutomationSettingsIntent.LocationModeChanged -> updateState {
+                copy(editState = editState?.copy(locationMode = intent.value))
+            }
+
             AutomationSettingsIntent.Save -> save()
             is AutomationSettingsIntent.RequestDelete -> {
                 val item = currentState.items.getOrNull(intent.index) ?: return
@@ -191,6 +283,14 @@ class AutomationSettingsViewModel :
                         action = full.action,
                         prompt = full.prompt,
                         cooldownInput = full.cooldownSeconds.toString(),
+                        batteryLevelInput = full.batteryLevel.toString(),
+                        batteryEvent = full.batteryEvent,
+                        timeOfDayInput = full.timeOfDay,
+                        daysOfWeekInput = full.daysOfWeek.sorted().joinToString(", "),
+                        latitudeInput = if (full.latitude == 0.0) "" else full.latitude.toString(),
+                        longitudeInput = if (full.longitude == 0.0) "" else full.longitude.toString(),
+                        radiusInput = full.radiusMeters.toString(),
+                        locationMode = full.locationMode,
                     ),
                     inlineErrorResId = null,
                 )
@@ -239,13 +339,41 @@ class AutomationSettingsViewModel :
         } else {
             null
         }
-        if (nameError != null || promptError != null) {
+
+        // v1.7.0：新来源的必填字段校验
+        var sourceFieldError: Int? = null
+        val batteryLevel = edit.batteryLevelInput.toIntOrNull()?.coerceIn(1, 100) ?: 20
+        val timeOfDay = normalizeTimeOfDay(edit.timeOfDayInput)
+        val days = parseDaysOfWeek(edit.daysOfWeekInput)
+        val latitude = edit.latitudeInput.trim().toDoubleOrNull()
+        val longitude = edit.longitudeInput.trim().toDoubleOrNull()
+        val radius = edit.radiusInput.toIntOrNull()?.coerceIn(30, 10_000) ?: 200
+        when (edit.source) {
+            AutomationTriggerSource.TIME ->
+                if (timeOfDay == null) {
+                    sourceFieldError = R.string.automation_error_time_required
+                }
+
+            AutomationTriggerSource.LOCATION -> {
+                when {
+                    latitude == null || longitude == null ||
+                            kotlin.math.abs(latitude) > 90.0 ||
+                            kotlin.math.abs(longitude) > 180.0 ->
+                        sourceFieldError = R.string.automation_error_coords_required
+                }
+            }
+
+            else -> Unit
+        }
+
+        if (nameError != null || promptError != null || sourceFieldError != null) {
             updateState {
                 copy(
                     editState = edit.copy(
                         name = name,
                         nameErrorResId = nameError,
                         promptErrorResId = promptError,
+                        sourceFieldErrorResId = sourceFieldError,
                     ),
                 )
             }
@@ -265,6 +393,14 @@ class AutomationSettingsViewModel :
                 action = edit.action,
                 prompt = prompt,
                 cooldownSeconds = cooldown,
+                batteryLevel = batteryLevel,
+                batteryEvent = edit.batteryEvent,
+                timeOfDay = timeOfDay ?: "",
+                daysOfWeek = days,
+                latitude = latitude ?: 0.0,
+                longitude = longitude ?: 0.0,
+                radiusMeters = radius,
+                locationMode = edit.locationMode,
             )
             XRepo.automation.save(trigger)
             Logger.i(LOG_TAG, "save ok id=${trigger.id}")
@@ -281,6 +417,24 @@ class AutomationSettingsViewModel :
                 )
             }
         }
+    }
+
+    /** "9:5" → "09:05"；非法返回 null。 */
+    private fun normalizeTimeOfDay(raw: String): String? {
+        val parts = raw.trim().split(':')
+        if (parts.size != 2) return null
+        val h = parts[0].toIntOrNull() ?: return null
+        val m = parts[1].toIntOrNull() ?: return null
+        if (h !in 0..23 || m !in 0..59) return null
+        return String.format(java.util.Locale.US, "%02d:%02d", h, m)
+    }
+
+    /** "1, 3,5" → [1,3,5]；非法项忽略。 */
+    private fun parseDaysOfWeek(raw: String): Set<Int> {
+        return raw.split(',', ' ', ';')
+            .mapNotNull { it.trim().toIntOrNull() }
+            .filter { it in 1..7 }
+            .toSet()
     }
 
     private suspend fun confirmDelete() {
@@ -321,6 +475,14 @@ private fun AutomationTrigger.toItem(): AutomationTriggerItem {
         action = action,
         prompt = prompt,
         cooldownSeconds = cooldownSeconds,
+        batteryLevel = batteryLevel,
+        batteryEvent = batteryEvent,
+        timeOfDay = timeOfDay,
+        daysOfWeek = daysOfWeek,
+        latitude = latitude,
+        longitude = longitude,
+        radiusMeters = radiusMeters,
+        locationMode = locationMode,
     )
 }
 
@@ -336,5 +498,13 @@ private fun AutomationTriggerItem.toModel(): AutomationTrigger {
         action = action,
         prompt = prompt,
         cooldownSeconds = cooldownSeconds,
+        batteryLevel = batteryLevel,
+        batteryEvent = batteryEvent,
+        timeOfDay = timeOfDay,
+        daysOfWeek = daysOfWeek,
+        latitude = latitude,
+        longitude = longitude,
+        radiusMeters = radiusMeters,
+        locationMode = locationMode,
     )
 }

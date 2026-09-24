@@ -41,6 +41,27 @@ object BuiltinToolGroups {
             members = listOf("open_uri", "launch_app", "find_installed_apps", "notify"),
         ),
         BuiltinToolGroup(
+            id = "system_data",
+            titleRes = R.string.builtin_tool_group_system_data,
+            summaryRes = R.string.builtin_tool_group_system_data_summary,
+            mode = BuiltinToolGroupMode.PER_TOOL,
+            members = listOf("system_data"),
+        ),
+        BuiltinToolGroup(
+            id = "live_vision",
+            titleRes = R.string.builtin_tool_group_live_vision,
+            summaryRes = R.string.builtin_tool_group_live_vision_summary,
+            mode = BuiltinToolGroupMode.PER_TOOL,
+            members = listOf("live_screen"),
+        ),
+        BuiltinToolGroup(
+            id = "file_ops",
+            titleRes = R.string.builtin_tool_group_file_ops,
+            summaryRes = R.string.builtin_tool_group_file_ops_summary,
+            mode = BuiltinToolGroupMode.PER_TOOL,
+            members = listOf("file_manager", "pdf_tools"),
+        ),
+        BuiltinToolGroup(
             id = "screen_operation",
             titleRes = R.string.builtin_tool_group_screen_operation,
             summaryRes = R.string.builtin_tool_group_screen_operation_summary,

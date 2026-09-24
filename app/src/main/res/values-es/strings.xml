@@ -558,4 +558,49 @@
     <string name="ui_home_attach_photo">Foto</string>
     <string name="ui_home_attach_document">Documento</string>
     <string name="dialog_done">Hecho</string>
+
+    <!-- v1.7.0 System-Integrated Autonomous Agent -->
+    <string name="ui_settings_system_integration">Integración del sistema</string>
+    <string name="ui_settings_system_integration_summary">APIs del sistema, visión en tiempo real, orquestación de archivos, autonomía por eventos</string>
+    <string name="sys_page_description">Convierte al agente en uno integrado con el sistema: API primero (contactos/calendario/batería/ajustes leídos directamente, 100% fiable), visión en tiempo real (nuevo fotograma en cada cambio de UI), orquestación global de archivos (organización masiva / fusión de PDF / copias de seguridad) y autonomía por eventos (disparadores de batería / horario / ubicación).</string>
+    <string name="sys_perm_contacts">Permiso de contactos</string>
+    <string name="sys_perm_calendar">Permiso de calendario</string>
+    <string name="sys_perm_location">Permiso de ubicación precisa</string>
+    <string name="sys_perm_ok">Concedido</string>
+    <string name="sys_perm_missing">Sin conceder, toca para solicitar</string>
+    <string name="sys_api_desc">La herramienta system_data llama directamente a las APIs del sistema Android, sin navegar por apps. Si falta un permiso, el agente te guiará para concederlo en los ajustes del sistema.</string>
+    <string name="sys_vision_accessibility">Servicio de accesibilidad (requisito para fotogramas en vivo)</string>
+    <string name="sys_vision_accessibility_ok">Activado — visión en tiempo real disponible</string>
+    <string name="sys_vision_accessibility_missing">No activado, toca para abrir los ajustes</string>
+    <string name="sys_vision_desc">Detrás de live_screen hay un flujo continuo de percepción: captura un nuevo fotograma automáticamente cuando la UI cambia, con refresco periódico en reposo. Mucho más fresco que capturas estáticas para animaciones y juegos.</string>
+    <string name="sys_files_all_access">Acceso a todos los archivos</string>
+    <string name="sys_files_all_access_missing">Sin conceder, toca para abrir los ajustes</string>
+    <string name="sys_files_desc">file_manager y pdf_tools orquestan todo el almacenamiento: ordenación masiva, mover/renombrar, buscar, copias zip y fusión/división de PDF — sin root, resultados estructurados.</string>
+    <string name="sys_events_open_automation">Gestión de disparadores por eventos</string>
+    <string name="sys_events_armed_count">Disparadores activos: %1$d</string>
+    <string name="automation_source_battery">Evento de batería</string>
+    <string name="automation_source_time">Horario</string>
+    <string name="automation_source_location">Ubicación (entrar/salir)</string>
+    <string name="automation_field_battery_level_hint">Umbral de batería % (ej. 20)</string>
+    <string name="automation_field_battery_event">Evento de batería (toca para cambiar)</string>
+    <string name="automation_battery_event_low">Batería baja</string>
+    <string name="automation_battery_event_charging">Carga iniciada</string>
+    <string name="automation_battery_event_full">Carga completa</string>
+    <string name="automation_battery_event_okay">Batería recuperada</string>
+    <string name="automation_field_time_hint">Hora HH:mm (ej. 07:30)</string>
+    <string name="automation_field_days_hint">Días (1=lun…7=dom, separados por comas; vacío = diario)</string>
+    <string name="automation_field_lat_hint">Latitud objetivo (ej. 23.8103)</string>
+    <string name="automation_field_lng_hint">Longitud objetivo (ej. 90.4125)</string>
+    <string name="automation_field_radius_hint">Radio en metros (30–10000)</string>
+    <string name="automation_field_loc_mode">Modo (toca para cambiar)</string>
+    <string name="automation_location_enter">Al entrar en la zona</string>
+    <string name="automation_location_exit">Al salir de la zona</string>
+    <string name="automation_error_time_required">Introduce una hora válida (HH:mm)</string>
+    <string name="automation_error_coords_required">Introduce latitud (-90~90) y longitud (-180~180) válidas</string>
+    <string name="builtin_tool_group_system_data">Datos del sistema (API directa)</string>
+    <string name="builtin_tool_group_system_data_summary">Lee contactos, calendario, batería, ajustes y red vía APIs del sistema — API primero, sin automatización de UI</string>
+    <string name="builtin_tool_group_live_vision">Visión en tiempo real</string>
+    <string name="builtin_tool_group_live_vision_summary">Flujo continuo de percepción de pantalla; cada fotograma es el momento actual</string>
+    <string name="builtin_tool_group_file_ops">Orquestación de archivos</string>
+    <string name="builtin_tool_group_file_ops_summary">Gestión global de archivos, ordenación masiva, copias zip y fusión/división de PDF</string>
 </resources>

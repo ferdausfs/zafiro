@@ -19,6 +19,9 @@ import java.util.UUID
  * 触发源：
  *  - NOTIFICATION：系统通知（NotificationListenerService 捕获）
  *  - FILE_DOWNLOAD：Download 目录新文件（FileObserver 监听）
+ *  - BATTERY：电池事件（电量阈值/充电/充满，v1.7.0）
+ *  - TIME：定时触发（HH:mm + 星期几，v1.7.0）
+ *  - LOCATION：地点进/出（经纬度 + 半径，v1.7.0）
  *
  * 动作：
  *  - AGENT：唤醒 LLM Agent，携带事件上下文自主执行
@@ -27,12 +30,26 @@ import java.util.UUID
 enum class AutomationTriggerSource {
     NOTIFICATION,
     FILE_DOWNLOAD,
+    BATTERY,
+    TIME,
+    LOCATION,
 }
 
 enum class AutomationTriggerAction {
     AGENT,
     ALERT,
 }
+
+/** BATTERY 源：电池事件类型。 */
+enum class AutomationBatteryEvent {
+    LOW,       // 电量 ≤ batteryLevel 阈值且未充电
+    CHARGING,  // 开始充电
+    FULL,      // 充满（≥ 95% 视为满）
+    OKAY,      // 电量从低位回升到阈值之上（解除低电）
+}
+
+/** LOCATION 源：进入/离开模式。 */
+enum class AutomationLocationMode { ENTER, EXIT }
 
 data class AutomationTrigger(
     val id: String,
@@ -50,6 +67,23 @@ data class AutomationTrigger(
     val prompt: String = "",
     /** 同一触发器两次触发之间的最小间隔（秒），防止风暴。 */
     val cooldownSeconds: Int = DEFAULT_COOLDOWN_SECONDS,
+    // ---- v1.7.0 新增字段 ----
+    /** BATTERY 源：电量阈值百分比（LOW/OKAY 判定线）。 */
+    val batteryLevel: Int = 20,
+    /** BATTERY 源：电池事件类型。 */
+    val batteryEvent: AutomationBatteryEvent = AutomationBatteryEvent.LOW,
+    /** TIME 源：触发时刻 "HH:mm"（24 小时制，设备本地时区）。 */
+    val timeOfDay: String = "",
+    /** TIME 源：生效星期（1=周一 … 7=周日）；空集 = 每天。 */
+    val daysOfWeek: Set<Int> = emptySet(),
+    /** LOCATION 源：目标纬度。 */
+    val latitude: Double = 0.0,
+    /** LOCATION 源：目标经度。 */
+    val longitude: Double = 0.0,
+    /** LOCATION 源：半径（米）。 */
+    val radiusMeters: Int = 200,
+    /** LOCATION 源：进入还是离开时触发。 */
+    val locationMode: AutomationLocationMode = AutomationLocationMode.ENTER,
 ) {
     companion object {
         const val DEFAULT_COOLDOWN_SECONDS: Int = 30
@@ -71,6 +105,15 @@ internal object AutomationTriggersCodec {
     private const val ACTION_KEY = "action"
     private const val PROMPT_KEY = "prompt"
     private const val COOLDOWN_KEY = "cooldownSeconds"
+    // v1.7.0
+    private const val BATTERY_LEVEL_KEY = "batteryLevel"
+    private const val BATTERY_EVENT_KEY = "batteryEvent"
+    private const val TIME_OF_DAY_KEY = "timeOfDay"
+    private const val DAYS_OF_WEEK_KEY = "daysOfWeek"
+    private const val LATITUDE_KEY = "latitude"
+    private const val LONGITUDE_KEY = "longitude"
+    private const val RADIUS_KEY = "radiusMeters"
+    private const val LOCATION_MODE_KEY = "locationMode"
 
     fun parse(json: String): List<AutomationTrigger> {
         return parseObject(json)
@@ -99,6 +142,23 @@ internal object AutomationTriggersCodec {
                     cooldownSeconds = obj.string(COOLDOWN_KEY).toIntOrNull()
                         ?.coerceIn(0, AutomationTrigger.MAX_COOLDOWN_SECONDS)
                         ?: AutomationTrigger.DEFAULT_COOLDOWN_SECONDS,
+                    batteryLevel = obj.string(BATTERY_LEVEL_KEY).toIntOrNull()
+                        ?.coerceIn(1, 100) ?: 20,
+                    batteryEvent = AutomationBatteryEvent.entries.firstOrNull {
+                        it.name == obj.string(BATTERY_EVENT_KEY)
+                    } ?: AutomationBatteryEvent.LOW,
+                    timeOfDay = obj.string(TIME_OF_DAY_KEY).trim(),
+                    daysOfWeek = obj.array(DAYS_OF_WEEK_KEY).stringValues()
+                        .mapNotNull(String::toIntOrNull)
+                        .filter { it in 1..7 }
+                        .toSet(),
+                    latitude = obj.string(LATITUDE_KEY).toDoubleOrNull() ?: 0.0,
+                    longitude = obj.string(LONGITUDE_KEY).toDoubleOrNull() ?: 0.0,
+                    radiusMeters = obj.string(RADIUS_KEY).toIntOrNull()
+                        ?.coerceIn(30, 10_000) ?: 200,
+                    locationMode = AutomationLocationMode.entries.firstOrNull {
+                        it.name == obj.string(LOCATION_MODE_KEY)
+                    } ?: AutomationLocationMode.ENTER,
                 )
             }
     }
@@ -120,6 +180,17 @@ internal object AutomationTriggersCodec {
                                 ACTION_KEY to JsonPrimitive(trigger.action.name),
                                 PROMPT_KEY to JsonPrimitive(trigger.prompt),
                                 COOLDOWN_KEY to JsonPrimitive(trigger.cooldownSeconds),
+                                BATTERY_LEVEL_KEY to JsonPrimitive(trigger.batteryLevel),
+                                BATTERY_EVENT_KEY to JsonPrimitive(trigger.batteryEvent.name),
+                                TIME_OF_DAY_KEY to JsonPrimitive(trigger.timeOfDay),
+                                DAYS_OF_WEEK_KEY to
+                                        SettingsJsonCodecUtils.stringArray(
+                                            trigger.daysOfWeek.map(Int::toString).sorted()
+                                        ),
+                                LATITUDE_KEY to JsonPrimitive(trigger.latitude),
+                                LONGITUDE_KEY to JsonPrimitive(trigger.longitude),
+                                RADIUS_KEY to JsonPrimitive(trigger.radiusMeters),
+                                LOCATION_MODE_KEY to JsonPrimitive(trigger.locationMode.name),
                             )
                         )
                     }
@@ -186,6 +257,10 @@ class AutomationApi internal constructor(
             prompt = prompt.trim(),
             cooldownSeconds = cooldownSeconds
                 .coerceIn(0, AutomationTrigger.MAX_COOLDOWN_SECONDS),
+            batteryLevel = batteryLevel.coerceIn(1, 100),
+            timeOfDay = timeOfDay.trim().take(5),
+            daysOfWeek = daysOfWeek.filter { it in 1..7 }.toSet(),
+            radiusMeters = radiusMeters.coerceIn(30, 10_000),
         )
     }
 

@@ -47,6 +47,8 @@ import com.niki914.zafiro.app.ui.model.AutomationSettingsViewModel
 import com.niki914.zafiro.app.ui.model.AutomationTriggerEditState
 import com.niki914.zafiro.app.ui.model.AutomationTriggerItem
 import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
+import com.niki914.zafiro.repo.AutomationBatteryEvent
+import com.niki914.zafiro.repo.AutomationLocationMode
 import com.niki914.zafiro.repo.AutomationTriggerAction
 import com.niki914.zafiro.repo.AutomationTriggerSource
 
@@ -325,7 +327,7 @@ private fun AutomationSettingsContentBody(
     )
 }
 
-/** 触发器摘要行：来源 · 应用 · 关键词。 */
+/** 触发器摘要行：来源 · 参数。 */
 private fun AutomationTriggerItem.summarize(): String {
     val parts = mutableListOf<String>()
     parts += when (source) {
@@ -338,6 +340,17 @@ private fun AutomationTriggerItem.summarize(): String {
         }
 
         AutomationTriggerSource.FILE_DOWNLOAD -> "Download/"
+
+        AutomationTriggerSource.BATTERY ->
+            "${batteryEvent.name.lowercase()} ≤${batteryLevel}%"
+
+        AutomationTriggerSource.TIME ->
+            timeOfDay + if (daysOfWeek.isEmpty()) "" else " d${daysOfWeek.sorted().joinToString(",")}"
+
+        AutomationTriggerSource.LOCATION ->
+            "${locationMode.name.lowercase()}(%.3f,%.3f)r${radiusMeters}m".format(
+                java.util.Locale.US, latitude, longitude
+            )
     }
     if (keywords.isNotEmpty()) {
         parts += keywords.joinToString(prefix = "#", separator = " #")
@@ -400,26 +413,15 @@ private fun AutomationTriggerEditorDialog(
                     FieldErrorText(it)
                 }
 
-                // 来源选择（点击循环切换）
+                // 来源选择（点击循环切换：通知 → 文件 → 电池 → 定时 → 地点）
                 SettingsRowSpecSelector(
                     label = stringResource(R.string.automation_field_source),
-                    value = when (state?.source) {
-                        AutomationTriggerSource.NOTIFICATION ->
-                            stringResource(R.string.automation_source_notification)
-
-                        AutomationTriggerSource.FILE_DOWNLOAD ->
-                            stringResource(R.string.automation_source_file)
-
-                        null -> ""
-                    },
+                    value = sourceLabel(state?.source),
                     enabled = !isSaving,
                 ) {
-                    val next = when (state?.source) {
-                        AutomationTriggerSource.NOTIFICATION ->
-                            AutomationTriggerSource.FILE_DOWNLOAD
-
-                        else -> AutomationTriggerSource.NOTIFICATION
-                    }
+                    val current = state?.source ?: AutomationTriggerSource.NOTIFICATION
+                    val entries = AutomationTriggerSource.entries
+                    val next = entries[(entries.indexOf(current) + 1) % entries.size]
                     viewModel.sendIntent(AutomationSettingsIntent.SourceChanged(next))
                 }
 
@@ -444,6 +446,99 @@ private fun AutomationTriggerEditorDialog(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                }
+
+                if (state?.source == AutomationTriggerSource.BATTERY) {
+                    LiquidTextField(
+                        value = state.batteryLevelInput,
+                        onValueChange = {
+                            viewModel.sendIntent(AutomationSettingsIntent.BatteryLevelChanged(it))
+                        },
+                        placeholder = stringResource(R.string.automation_field_battery_level_hint),
+                        enabled = !isSaving,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    SettingsRowSpecSelector(
+                        label = stringResource(R.string.automation_field_battery_event),
+                        value = batteryEventLabel(state.batteryEvent),
+                        enabled = !isSaving,
+                    ) {
+                        val entries = AutomationBatteryEvent.entries
+                        val next = entries[(entries.indexOf(state.batteryEvent) + 1) % entries.size]
+                        viewModel.sendIntent(AutomationSettingsIntent.BatteryEventChanged(next))
+                    }
+                }
+
+                if (state?.source == AutomationTriggerSource.TIME) {
+                    LiquidTextField(
+                        value = state.timeOfDayInput,
+                        onValueChange = {
+                            viewModel.sendIntent(AutomationSettingsIntent.TimeOfDayChanged(it))
+                        },
+                        placeholder = stringResource(R.string.automation_field_time_hint),
+                        enabled = !isSaving,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    LiquidTextField(
+                        value = state.daysOfWeekInput,
+                        onValueChange = {
+                            viewModel.sendIntent(AutomationSettingsIntent.DaysOfWeekChanged(it))
+                        },
+                        placeholder = stringResource(R.string.automation_field_days_hint),
+                        enabled = !isSaving,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+
+                if (state?.source == AutomationTriggerSource.LOCATION) {
+                    LiquidTextField(
+                        value = state.latitudeInput,
+                        onValueChange = {
+                            viewModel.sendIntent(AutomationSettingsIntent.LatitudeChanged(it))
+                        },
+                        placeholder = stringResource(R.string.automation_field_lat_hint),
+                        enabled = !isSaving,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    LiquidTextField(
+                        value = state.longitudeInput,
+                        onValueChange = {
+                            viewModel.sendIntent(AutomationSettingsIntent.LongitudeChanged(it))
+                        },
+                        placeholder = stringResource(R.string.automation_field_lng_hint),
+                        enabled = !isSaving,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    LiquidTextField(
+                        value = state.radiusInput,
+                        onValueChange = {
+                            viewModel.sendIntent(AutomationSettingsIntent.RadiusChanged(it))
+                        },
+                        placeholder = stringResource(R.string.automation_field_radius_hint),
+                        enabled = !isSaving,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    SettingsRowSpecSelector(
+                        label = stringResource(R.string.automation_field_loc_mode),
+                        value = locationModeLabel(state.locationMode),
+                        enabled = !isSaving,
+                    ) {
+                        val next = when (state.locationMode) {
+                            AutomationLocationMode.ENTER -> AutomationLocationMode.EXIT
+                            else -> AutomationLocationMode.ENTER
+                        }
+                        viewModel.sendIntent(AutomationSettingsIntent.LocationModeChanged(next))
+                    }
+                }
+
+                state?.sourceFieldErrorResId?.let {
+                    FieldErrorText(it)
                 }
 
                 LiquidTextField(
@@ -577,4 +672,28 @@ private fun triggerRowId(index: Int): String = "$TRIGGER_ROW_ID_PREFIX$index"
 private fun triggerIndexFromRowId(id: String): Int? {
     if (!id.startsWith(TRIGGER_ROW_ID_PREFIX)) return null
     return id.removePrefix(TRIGGER_ROW_ID_PREFIX).toIntOrNull()
+}
+
+@Composable
+private fun sourceLabel(source: AutomationTriggerSource?): String = when (source) {
+    AutomationTriggerSource.NOTIFICATION -> stringResource(R.string.automation_source_notification)
+    AutomationTriggerSource.FILE_DOWNLOAD -> stringResource(R.string.automation_source_file)
+    AutomationTriggerSource.BATTERY -> stringResource(R.string.automation_source_battery)
+    AutomationTriggerSource.TIME -> stringResource(R.string.automation_source_time)
+    AutomationTriggerSource.LOCATION -> stringResource(R.string.automation_source_location)
+    null -> ""
+}
+
+@Composable
+private fun batteryEventLabel(event: AutomationBatteryEvent): String = when (event) {
+    AutomationBatteryEvent.LOW -> stringResource(R.string.automation_battery_event_low)
+    AutomationBatteryEvent.CHARGING -> stringResource(R.string.automation_battery_event_charging)
+    AutomationBatteryEvent.FULL -> stringResource(R.string.automation_battery_event_full)
+    AutomationBatteryEvent.OKAY -> stringResource(R.string.automation_battery_event_okay)
+}
+
+@Composable
+private fun locationModeLabel(mode: AutomationLocationMode): String = when (mode) {
+    AutomationLocationMode.ENTER -> stringResource(R.string.automation_location_enter)
+    AutomationLocationMode.EXIT -> stringResource(R.string.automation_location_exit)
 }

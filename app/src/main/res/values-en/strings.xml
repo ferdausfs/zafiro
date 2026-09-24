@@ -558,4 +558,49 @@
     <string name="ui_home_attach_photo">Photo</string>
     <string name="ui_home_attach_document">Document</string>
     <string name="dialog_done">Done</string>
+
+    <!-- v1.7.0 System-Integrated Autonomous Agent -->
+    <string name="ui_settings_system_integration">System Integration</string>
+    <string name="ui_settings_system_integration_summary">Direct system APIs, real-time vision, file orchestration, event-driven autonomy</string>
+    <string name="sys_page_description">Evolves the agent into a system-integrated one: API-first (contacts/calendar/battery/settings read directly, 100% reliable), real-time vision (new frame on every UI change), global file orchestration (bulk organize / PDF merge / backups) and event-driven autonomy (battery / schedule / location triggers).</string>
+    <string name="sys_perm_contacts">Contacts permission</string>
+    <string name="sys_perm_calendar">Calendar permission</string>
+    <string name="sys_perm_location">Fine location permission</string>
+    <string name="sys_perm_ok">Granted</string>
+    <string name="sys_perm_missing">Not granted, tap to request</string>
+    <string name="sys_api_desc">The system_data tool calls Android System APIs directly — no app navigation needed. When a permission is missing, the agent will guide you to grant it in system settings.</string>
+    <string name="sys_vision_accessibility">Accessibility service (required for live frames)</string>
+    <string name="sys_vision_accessibility_ok">Enabled — real-time vision available</string>
+    <string name="sys_vision_accessibility_missing">Not enabled, tap to open system settings</string>
+    <string name="sys_vision_desc">Behind the live_screen tool is a continuous perception stream: a new frame is captured automatically whenever the UI changes, with periodic refresh when idle. Far faster and fresher than static screenshots for animations and games.</string>
+    <string name="sys_files_all_access">All files access</string>
+    <string name="sys_files_all_access_missing">Not granted, tap to open system settings</string>
+    <string name="sys_files_desc">file_manager and pdf_tools orchestrate the whole storage: bulk sorting, move/rename, search, zip backups and PDF merge/split — no root, structured results.</string>
+    <string name="sys_events_open_automation">Event-driven trigger management</string>
+    <string name="sys_events_armed_count">Enabled triggers: %1$d</string>
+    <string name="automation_source_battery">Battery event</string>
+    <string name="automation_source_time">Schedule</string>
+    <string name="automation_source_location">Location (enter/exit)</string>
+    <string name="automation_field_battery_level_hint">Battery threshold percent (e.g. 20)</string>
+    <string name="automation_field_battery_event">Battery event (tap to cycle)</string>
+    <string name="automation_battery_event_low">Low battery</string>
+    <string name="automation_battery_event_charging">Charging started</string>
+    <string name="automation_battery_event_full">Fully charged</string>
+    <string name="automation_battery_event_okay">Battery recovered</string>
+    <string name="automation_field_time_hint">Time of day HH:mm (e.g. 07:30)</string>
+    <string name="automation_field_days_hint">Days of week (1=Mon…7=Sun, comma separated; empty = daily)</string>
+    <string name="automation_field_lat_hint">Target latitude (e.g. 23.8103)</string>
+    <string name="automation_field_lng_hint">Target longitude (e.g. 90.4125)</string>
+    <string name="automation_field_radius_hint">Radius in meters (30–10000)</string>
+    <string name="automation_field_loc_mode">Trigger mode (tap to cycle)</string>
+    <string name="automation_location_enter">When entering the area</string>
+    <string name="automation_location_exit">When leaving the area</string>
+    <string name="automation_error_time_required">Enter a valid time of day (HH:mm)</string>
+    <string name="automation_error_coords_required">Enter a valid latitude (-90~90) and longitude (-180~180)</string>
+    <string name="builtin_tool_group_system_data">System data (API direct)</string>
+    <string name="builtin_tool_group_system_data_summary">Read contacts, calendar, battery, settings and network via System APIs — API-first, no UI automation</string>
+    <string name="builtin_tool_group_live_vision">Real-time vision</string>
+    <string name="builtin_tool_group_live_vision_summary">Continuous screen perception stream; every frame is the current moment</string>
+    <string name="builtin_tool_group_file_ops">File orchestration</string>
+    <string name="builtin_tool_group_file_ops_summary">Global file management, bulk sorting, zip backups and PDF merge/split</string>
 </resources>

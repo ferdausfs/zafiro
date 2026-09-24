@@ -79,6 +79,7 @@ private fun settingsSections(): List<SettingsSectionDefinition> {
             titleRes = R.string.ui_settings_section_tools,
             groups = listOf(
                 ZafiroSettingsGroup.BuiltinTools,
+                ZafiroSettingsGroup.SystemIntegration,
                 ZafiroSettingsGroup.Skills,
                 ZafiroSettingsGroup.Mcp,
                 ZafiroSettingsGroup.TokenVault,

@@ -23,6 +23,11 @@ enum class ZafiroSettingsGroup(
         summaryRes = R.string.ui_settings_builtin_tools_summary,
         routeSuffix = "builtin-tools",
     ),
+    SystemIntegration(
+        titleRes = R.string.ui_settings_system_integration,
+        summaryRes = R.string.ui_settings_system_integration_summary,
+        routeSuffix = "system-integration",
+    ),
     Skills(
         titleRes = R.string.ui_settings_skills,
         summaryRes = R.string.ui_settings_skills_summary,
