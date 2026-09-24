@@ -65,9 +65,15 @@ class ZafiroAutomationService : Service() {
         }
 
         fun stop(context: Context) {
-            context.startService(
-                Intent(context, ZafiroAutomationService::class.java).setAction(ACTION_STOP)
-            )
+            // Phase 2：服务已死亡时（startService 需要服务存在或应用在前台），
+            // 后台调用会抛 IllegalStateException —— 停止动作失败等于已停止，吞掉即可。
+            try {
+                context.startService(
+                    Intent(context, ZafiroAutomationService::class.java).setAction(ACTION_STOP)
+                )
+            } catch (t: Throwable) {
+                Logger.w(LOG_TAG, "stop intent not deliverable (already stopped?): ${t.message}")
+            }
         }
     }
 }

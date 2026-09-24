@@ -103,6 +103,16 @@ object SamsungPersistenceWatchdog {
         -1
     }
 
+    /**
+     * Phase 2（BootReceiver / ServiceWatchdogWorker 共用）：上一次服务停止是否为
+     * 用户主动。台账即持久化状态（onServiceStopped 落盘），无记录（首次安装）
+     * 按「用户未开启过」处理 —— 开机不自启，等用户首次打开后再跟随。
+     */
+    fun wasLastStopUser(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_LAST_STOP_USER, true)
+    }
+
     // ------------------------------------------------------------- internals
 
     private fun recordKill(context: Context) {
