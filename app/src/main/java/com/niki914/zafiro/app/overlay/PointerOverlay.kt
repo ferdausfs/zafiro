@@ -268,10 +268,15 @@ class PointerOverlay : IPointerOverlay {
      * detached can never flash at alpha=1 when permission becomes available.
      */
     private fun tryAttach() {
-        if (attached || wm == null || view == null || lp == null) return
+        // B：!! → 局部快照。attached/wm/view/lp 是可变字段，判空后二次用 !! 解
+        // 引用与重新读取之间理论上可被 detach 清空；局部 val 让判空与使用同源。
+        val wmRef = wm ?: return
+        val viewRef = view ?: return
+        val lpRef = lp ?: return
+        if (attached) return
         try {
-            view!!.alpha = 0f
-            wm!!.addView(view, lp)
+            viewRef.alpha = 0f
+            wmRef.addView(viewRef, lpRef)
             attached = true
         } catch (_: Exception) {
         }

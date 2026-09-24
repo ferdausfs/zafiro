@@ -79,9 +79,11 @@ object BackgroundTaskHub {
 
     fun init(context: Context, applicationScope: CoroutineScope) {
         if (appContext != null) return
-        appContext = context.applicationContext
+        val appCtx = context.applicationContext
+        appContext = appCtx
         scope = applicationScope
-        ensureChannels(appContext!!)
+        // B：!! → 局部 val（避免对可变字段二次解引用）
+        ensureChannels(appCtx)
         applicationScope.launch {
             try {
                 // 进程死亡遗留：上一进程的 RUNNING 全部标记中断

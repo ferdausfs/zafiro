@@ -62,6 +62,9 @@ object AccessibilityController {
     // 消费的英文契约文本，非 UI 本地化文案），与宿主渲染卡片的边界 hardcode 用途不同，
     // 保持英文原样，不资源化。
 
+    /** A5：Context 等待上限 —— 冷启动早期 provide 未到时明确报错而非永久挂起。 */
+    private const val CONTEXT_WAIT_TIMEOUT_MS = 10_000L
+
     private var serviceInstance: IAccessibility? = null
     private val nodeCache = ConcurrentHashMap<Int, AccessibilityNodeInfo>()
 
@@ -424,10 +427,17 @@ object AccessibilityController {
     private suspend fun refreshNodeCache(): ScreenContext {
         ensureService().getOrElse { throw it }
 
-        val root = serviceInstance!!.windowRoot
-            ?: throw RuntimeException("No active window")
+        val root = serviceInstance?.windowRoot
+            // B：!! → 安全判空。ensureService() 成功与会话实际使用之间服务可能
+            // 被系统断开（无障碍服务随时可被 One UI 杀掉），竞态下 !! 直接崩溃。
+            ?: throw RuntimeException("Accessibility service disconnected")
 
-        val ctx = ContextProvider.await()
+        // A5：带超时等待 Context；拿不到时明确报错（调用方已包 try/catch → failure）
+        val ctx = ContextProvider.await(CONTEXT_WAIT_TIMEOUT_MS)
+            ?: throw RuntimeException(
+                "Screen context unavailable: application context not provided after " +
+                        "${CONTEXT_WAIT_TIMEOUT_MS}ms."
+            )
         val dm = ctx.resources.displayMetrics
         cachedScreenWidth = dm.widthPixels
         cachedScreenHeight = dm.heightPixels
@@ -491,7 +501,14 @@ object AccessibilityController {
             return Result.failure(e)
         }
 
-        val ctx = ContextProvider.await()
+        // A5：带超时等待 Context；拿不到时返回 failure 而不是永久挂起。
+        val ctx = ContextProvider.await(CONTEXT_WAIT_TIMEOUT_MS)
+            ?: return Result.failure(
+                IllegalStateException(
+                    "Screen context unavailable: application context not provided after " +
+                            "${CONTEXT_WAIT_TIMEOUT_MS}ms."
+                )
+            )
         val screenW = ctx.resources.displayMetrics.widthPixels
         val screenH = ctx.resources.displayMetrics.heightPixels
 
@@ -729,7 +746,14 @@ object AccessibilityController {
             NodeAction.SCROLL_BACKWARD -> ACTION_SCROLL_BACKWARD
         }
 
-        val success = serviceInstance!!.performAction(node, actionInt, text)
+        // B：!! → 安全判空 + 明确错误结果。服务在 ensureService() 之后、执行之前
+        // 被系统断开时返回结构化失败（并继续走 shell fallback），而不是崩溃。
+        val service = serviceInstance
+            ?: return BuiltinToolResult.failure(
+                "SERVICE_UNAVAILABLE",
+                "Accessibility service disconnected",
+            )
+        val success = service.performAction(node, actionInt, text)
         if (success) {
             return BuiltinToolResult.success("action ${action.name} performed via accessibility")
         }
