@@ -18,6 +18,7 @@ import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinTool
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
 import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolResult
+import com.niki914.zafiro.chat.agentic.samsung.SamsungDevice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -37,9 +38,11 @@ import java.util.Locale
  *  - contacts：通讯录（READ_CONTACTS）
  *  - calendar：日历事件（READ_CALENDAR）
  *  - battery：电池状态（免权限）
- *  - device：设备信息（免权限）
+ *  - device：设备信息（免权限；v1.8.0 含 One UI 版本）
  *  - settings：系统设置项（免权限，只读）
  *  - network：网络状态（ACCESS_NETWORK_STATE，普通权限）
+ *  - read_setting：按名读取任意 system/global/secure 设置键（v1.8.0 One UI 适配核心：
+ *    三星 sem_* 等私有键无需硬编码常量即可直读）
  *
  * 相比 screen_operation 的 UI 遍历，API 读取是 100% 可靠、毫秒级完成。
  */
@@ -55,6 +58,8 @@ no UI automation needed. Actions:
 - battery: level, charging state, health, temperature.
 - device: model, Android version, screen, storage, RAM.
 - settings: brightness, screen timeout, airplane mode, auto-rotate, etc.
+- read_setting: read ANY settings key by name (namespace system/global/secure) —
+  including Samsung One UI keys such as sem_* — instant and permission-free.
 - network: connectivity type (wifi/cellular), metered state.
 ALWAYS prefer this tool over screen scraping for these data types.
     """.trimIndent()
@@ -83,11 +88,12 @@ ALWAYS prefer this tool over screen scraping for these data types.
                 ACTION_DEVICE -> readDevice(context)
                 ACTION_SETTINGS -> readSettings(context)
                 ACTION_NETWORK -> readNetwork(context)
+                ACTION_READ_SETTING -> readSetting(context, args.namespace, args.key)
                 else -> BuiltinToolResult.failure(
                     code = "UNKNOWN_ACTION",
                     message = "Unknown action '${args.action}'.",
                     hint = "Valid actions: $ACTION_CONTACTS, $ACTION_CALENDAR, $ACTION_BATTERY, " +
-                            "$ACTION_DEVICE, $ACTION_SETTINGS, $ACTION_NETWORK."
+                            "$ACTION_DEVICE, $ACTION_SETTINGS, $ACTION_NETWORK, $ACTION_READ_SETTING."
                 )
             }
         }
@@ -324,6 +330,11 @@ ALWAYS prefer this tool over screen scraping for these data types.
                 put("brand", Build.BRAND)
                 put("android_version", Build.VERSION.RELEASE)
                 put("sdk_int", Build.VERSION.SDK_INT)
+                // v1.8.0 Samsung/One UI
+                put("is_samsung", SamsungDevice.isSamsungManufacturer)
+                if (SamsungDevice.isSamsungManufacturer) {
+                    put("one_ui_version", SamsungDevice.oneUiVersion())
+                }
                 put("screen_px", "${metrics.widthPixels}x${metrics.heightPixels}")
                 put("density_dpi", metrics.densityDpi)
                 put("ram_total_gb", bytesToGb(memInfo.totalMem))
@@ -375,6 +386,59 @@ ALWAYS prefer this tool over screen scraping for these data types.
                 put("airplane_mode", airplane == 1)
             },
             hint = "Curated read-only snapshot of common system settings."
+        )
+    }
+
+    // --------------------------------------------------------- read_setting
+
+    /** v1.8.0：按名直读任意设置键 —— One UI/三星私有键（sem_* 等）的通用入口。 */
+    private fun readSetting(context: Context, namespace: String, key: String): BuiltinToolResult {
+        if (key.isBlank()) {
+            return BuiltinToolResult.failure(
+                code = "MISSING_KEY",
+                message = "read_setting requires a 'key' argument.",
+                hint = "Example: {\"action\":\"read_setting\",\"namespace\":\"global\",\"key\":\"sem_power_saving_enabled\"}"
+            )
+        }
+        val resolver = context.contentResolver
+        val raw: String? = try {
+            when (namespace) {
+                NAMESPACE_SYSTEM -> Settings.System.getString(resolver, key)
+                NAMESPACE_SECURE -> Settings.Secure.getString(resolver, key)
+                NAMESPACE_GLOBAL -> Settings.Global.getString(resolver, key)
+                else -> return BuiltinToolResult.failure(
+                    code = "UNKNOWN_NAMESPACE",
+                    message = "Unknown namespace '$namespace'.",
+                    hint = "Valid namespaces: $NAMESPACE_SYSTEM, $NAMESPACE_GLOBAL, $NAMESPACE_SECURE."
+                )
+            }
+        } catch (t: Throwable) {
+            Logger.w(LOG_TAG, "read_setting $namespace.$key failed: ${t.message}")
+            null
+        }
+        if (raw == null) {
+            return BuiltinToolResult.failure(
+                code = "KEY_NOT_FOUND",
+                message = "Setting key '$key' does not exist in namespace '$namespace' on this device.",
+                hint = "Keys are device/vendor specific; try the other namespace or verify the " +
+                        "key name (Samsung One UI often uses sem_* or vendor prefixes)."
+            )
+        }
+        val valueType = when {
+            raw.equals("true", true) || raw.equals("false", true) -> "boolean"
+            raw.toIntOrNull() != null -> "int"
+            raw.toDoubleOrNull() != null -> "float"
+            else -> "string"
+        }
+        return BuiltinToolResult.success(
+            message = "$namespace.$key = $raw",
+            data = buildJsonObject {
+                put("namespace", namespace)
+                put("key", key)
+                put("value", raw)
+                put("value_type", valueType)
+            },
+            hint = "Read-only API access — zero permission required, no UI navigation involved."
         )
     }
 
@@ -434,6 +498,8 @@ ALWAYS prefer this tool over screen scraping for these data types.
             query = obj.string("query").trim(),
             limit = obj.string("limit").toIntOrNull()?.coerceIn(1, 100) ?: 20,
             daysAhead = obj.string("days_ahead").toIntOrNull()?.coerceIn(1, 365) ?: 7,
+            namespace = obj.string("namespace").trim().ifBlank { NAMESPACE_GLOBAL },
+            key = obj.string("key").trim(),
         )
     }
 
@@ -454,6 +520,8 @@ ALWAYS prefer this tool over screen scraping for these data types.
         val query: String,
         val limit: Int,
         val daysAhead: Int,
+        val namespace: String,
+        val key: String,
     )
 
     private companion object {
@@ -465,6 +533,11 @@ ALWAYS prefer this tool over screen scraping for these data types.
         private const val ACTION_DEVICE = "device"
         private const val ACTION_SETTINGS = "settings"
         private const val ACTION_NETWORK = "network"
+        private const val ACTION_READ_SETTING = "read_setting"
+
+        private const val NAMESPACE_SYSTEM = "system"
+        private const val NAMESPACE_GLOBAL = "global"
+        private const val NAMESPACE_SECURE = "secure"
 
         private val SCHEMA = """
 {
@@ -472,7 +545,7 @@ ALWAYS prefer this tool over screen scraping for these data types.
   "properties": {
     "action": {
       "type": "string",
-      "enum": ["contacts", "calendar", "battery", "device", "settings", "network"],
+      "enum": ["contacts", "calendar", "battery", "device", "settings", "network", "read_setting"],
       "description": "Which system data to query."
     },
     "query": {
@@ -486,6 +559,15 @@ ALWAYS prefer this tool over screen scraping for these data types.
     "days_ahead": {
       "type": "integer",
       "description": "calendar only: how many days ahead to scan (1-365, default 7)."
+    },
+    "namespace": {
+      "type": "string",
+      "enum": ["system", "global", "secure"],
+      "description": "read_setting only: settings namespace (default 'global')."
+    },
+    "key": {
+      "type": "string",
+      "description": "read_setting only: exact settings key name (e.g. 'navigation_mode', 'sem_power_saving_enabled')."
     }
   },
   "required": ["action"]

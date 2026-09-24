@@ -1,6 +1,7 @@
 package com.niki914.zafiro.chat.agentic
 
 import com.niki914.zafiro.chat.ResolvedTools
+import com.niki914.zafiro.chat.agentic.samsung.SamsungDevice
 import com.niki914.zafiro.settings.model.RuntimeSkillMetadata
 
 data class PromptComposeResult(
@@ -50,6 +51,9 @@ class PromptComposer {
                         hasBuiltinTool(input, "live_screen") ||
                         hasBuiltinTool(input, "file_manager") ||
                         hasBuiltinTool(input, "pdf_tools")
+            },
+            SAMSUNG_ONEUI_DIRECTIVE.takeIf {
+                SamsungDevice.isSamsungManufacturer && hasBuiltinTool(input, "samsung")
             },
         ).joinToString(separator = "\n\n")
     }
@@ -297,5 +301,43 @@ class PromptComposer {
                     "via API, do it via API; if it needs visual confirmation of a live " +
                     "screen, use real-time vision; if it can be anticipated by an event, " +
                     "let a trigger wake you instead of polling."
+
+        /**
+         * v1.8.0 Samsung Special Directives — only composed on Samsung devices when the
+         * samsung tool is available. One UI-optimized operation manual for the agent.
+         */
+        internal const val SAMSUNG_ONEUI_DIRECTIVE =
+            "# Samsung One UI optimization (this device)\n" +
+                    "This is a Samsung phone running One UI — you are its Samsung-optimized " +
+                    "digital brain. Operate by these special directives:\n" +
+                    "1. ONE UI API-FIRST. samsung.status and system_data.read_setting read " +
+                    "One UI state (One UI version, navigation scheme, dark/power-saving mode, " +
+                    "battery exemption, any settings key including Samsung sem_* keys) in " +
+                    "milliseconds. Never open Settings or an app to read data you can query; " +
+                    "UI navigation is the last resort for data retrieval.\n" +
+                    "2. ONE UI NAVIGATION. For live screen control, call samsung.nav_mode " +
+                    "first: it reports the active scheme and the matching gesture map. " +
+                    "Gesture nav: swipe up = home, swipe up and hold = recents, swipe inward " +
+                    "from either side edge = back; split screen and pop-up view are reached " +
+                    "from the app icon above a recents card; edge panels (when enabled) are " +
+                    "swipe-from-edge handles. One UI animates heavily — verify every step " +
+                    "against the live frame, not a stale screenshot.\n" +
+                    "3. ONE UI PERSISTENCE. One UI's battery optimizer deep-sleeps background " +
+                    "apps aggressively. Your proactive service must survive: when evidence " +
+                    "suggests it was killed (automation stops responding, samsung.status " +
+                    "shows battery_optimization_ignored=false), use " +
+                    "samsung.open_battery_settings to send the user to Device Care → Battery " +
+                    "→ Background usage limits and have Zafiro removed from Deep sleeping " +
+                    "apps. Do not waste turns retrying dead services — fix persistence " +
+                    "first.\n" +
+                    "4. SAMSUNG STORAGE. Samsung media follows known layouts: DCIM/Camera, " +
+                    "DCIM/Screenshots or Pictures/Screenshots, Download, Documents, " +
+                    "Recordings, Voice Recorder. Map them with samsung.storage_profile, then " +
+                    "organize with file_manager sort_folder mode \"samsung\" (Screenshot/" +
+                    "camera/recording-aware buckets). Samsung Cloud and Gallery sync content " +
+                    "is not on disk — never claim to manage cloud-only files.\n" +
+                    "EFFICIENCY: when a Samsung-specific shortcut exists (Device Care deep " +
+                    "link, Modes and Routines, a Samsung settings key), take it before the " +
+                    "generic Android path."
     }
 }

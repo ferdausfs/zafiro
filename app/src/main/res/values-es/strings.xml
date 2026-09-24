@@ -603,4 +603,23 @@
     <string name="builtin_tool_group_live_vision_summary">Flujo continuo de percepción de pantalla; cada fotograma es el momento actual</string>
     <string name="builtin_tool_group_file_ops">Orquestación de archivos</string>
     <string name="builtin_tool_group_file_ops_summary">Gestión global de archivos, ordenación masiva, copias zip y fusión/división de PDF</string>
+    <string name="builtin_tool_group_samsung">Samsung One UI (optimizado)</string>
+    <string name="builtin_tool_group_samsung_summary">Específico de Samsung/One UI: estado de One UI, gestos de navegación, persistencia en segundo plano, organización de almacenamiento Samsung</string>
+    <string name="samsung_device_summary">One UI %1$s · %2$s · Navegación: %3$s</string>
+    <string name="samsung_battery_opt">Exención de optimización de batería</string>
+    <string name="samsung_battery_opt_ok">Exento — One UI apenas puede suspender Zafiro</string>
+    <string name="samsung_battery_opt_missing">Sin exención, toca para solicitarla</string>
+    <string name="samsung_deep_sleep">Aplicaciones en suspensión profunda (límites de One UI)</string>
+    <string name="samsung_deep_sleep_hint">Toca para abrir la página de batería de One UI: quita Zafiro de Aplicaciones en suspensión profunda y desactiva Poner en suspensión las aplicaciones sin usar</string>
+    <string name="samsung_persistence_ok">Sin paradas forzadas del sistema en las últimas 24 horas</string>
+    <string name="samsung_persistence_killed">Reiniciado por el sistema %1$d vez/veces en 24 h: revisa los límites de batería</string>
+    <string name="samsung_not_samsung">No es un dispositivo Samsung: las optimizaciones de One UI no se aplican; las demás funciones no se ven afectadas</string>
+    <string name="samsung_nav_gesture">Gestos a pantalla completa</string>
+    <string name="samsung_nav_three_button">Navegación de tres botones</string>
+    <string name="samsung_nav_two_button">Navegación de dos botones</string>
+    <string name="samsung_nav_unknown">Desconocido</string>
+    <string name="automation_battery_event_powersave_on">Ahorro de energía activado</string>
+    <string name="automation_battery_event_powersave_off">Ahorro de energía desactivado</string>
+    <string name="samsung_fgs_killed_title">Zafiro fue suspendido</string>
+    <string name="samsung_fgs_killed_body">La optimización de batería de One UI pudo suspender a Zafiro. Toca para abrir la configuración de batería y quitar a Zafiro de la lista restringida.</string>
 </resources>

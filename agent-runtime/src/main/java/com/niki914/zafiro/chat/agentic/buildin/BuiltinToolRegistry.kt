@@ -13,6 +13,7 @@ import com.niki914.zafiro.chat.agentic.buildin.impl.PyMetaToolsBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.PdfToolsBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenOperationAccessibilityBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenOperationShellBuiltin
+import com.niki914.zafiro.chat.agentic.buildin.impl.SamsungBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ScreenshotBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.SystemDataBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.TerminalBuiltin
@@ -52,6 +53,8 @@ class BuiltinToolRegistry(
                 LiveScreenBuiltin(),
                 FileManagerBuiltin(),
                 PdfToolsBuiltin(),
+                // v1.8.0 Samsung-Optimized Agent
+                SamsungBuiltin(),
             )
         )
     }

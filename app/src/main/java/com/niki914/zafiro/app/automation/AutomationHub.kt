@@ -80,6 +80,9 @@ object AutomationHub {
     private var locationListener: android.location.LocationListener? = null
     private var lastBatteryState: BatteryState? = null
     private val locationInsideState = HashMap<String, Boolean>()
+    // v1.8.0：One UI 省电模式事件源
+    private var powerSaveReceiver: android.content.BroadcastReceiver? = null
+    private var lastPowerSaveState: Boolean? = null
 
     private data class BatteryState(val level: Int, val charging: Boolean)
 
@@ -132,6 +135,7 @@ object AutomationHub {
                 _armedTriggerCount.value = triggers.count { it.enabled }
                 syncDownloadObserver(ctx, triggers)
                 syncBatteryReceiver(ctx, triggers)
+                syncPowerSaveReceiver(ctx, triggers)
                 syncTimeTicker(triggers)
                 syncLocationWatch(ctx, triggers)
                 Logger.d(
@@ -191,6 +195,41 @@ object AutomationHub {
             batteryReceiver = null
             lastBatteryState = null
             Logger.i(LOG_TAG, "battery receiver unregistered")
+        }
+    }
+
+    /** One UI 省电模式事件源（v1.8.0）：有 POWER_SAVE_* 触发器时注册系统广播。 */
+    private fun syncPowerSaveReceiver(context: Context, triggers: List<AutomationTrigger>) {
+        val needPowerSave = triggers.any {
+            it.enabled && it.source == AutomationTriggerSource.BATTERY && (
+                    it.batteryEvent == AutomationBatteryEvent.POWER_SAVE_ON ||
+                            it.batteryEvent == AutomationBatteryEvent.POWER_SAVE_OFF)
+        }
+        if (needPowerSave && powerSaveReceiver == null) {
+            val receiver = object : android.content.BroadcastReceiver() {
+                override fun onReceive(ctx: Context, intent: android.content.Intent) {
+                    if (intent.action != android.os.PowerManager.ACTION_POWER_SAVE_MODE_CHANGED) return
+                    val pm = ctx.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager ?: return
+                    onPowerSaveChanged(pm.isPowerSaveMode)
+                }
+            }
+            runCatching {
+                androidx.core.content.ContextCompat.registerReceiver(
+                    context,
+                    receiver,
+                    android.content.IntentFilter(android.os.PowerManager.ACTION_POWER_SAVE_MODE_CHANGED),
+                    androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+                )
+            }
+            // sticky 初始化：只记录当前状态，不触发
+            lastPowerSaveState = (context.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager)?.isPowerSaveMode
+            powerSaveReceiver = receiver
+            Logger.i(LOG_TAG, "power-save receiver registered (initial=$lastPowerSaveState)")
+        } else if (!needPowerSave && powerSaveReceiver != null) {
+            runCatching { context.unregisterReceiver(powerSaveReceiver!!) }
+            powerSaveReceiver = null
+            lastPowerSaveState = null
+            Logger.i(LOG_TAG, "power-save receiver unregistered")
         }
     }
 
@@ -288,6 +327,9 @@ object AutomationHub {
                 AutomationBatteryEvent.OKAY ->
                     !charging && level > trigger.batteryLevel &&
                             previous.level <= trigger.batteryLevel && !previous.charging
+
+                // v1.8.0：省电模式事件由 onPowerSaveChanged 处理，不走电量广播
+                AutomationBatteryEvent.POWER_SAVE_ON, AutomationBatteryEvent.POWER_SAVE_OFF -> false
             }
         }
         fired.forEach { trigger ->
@@ -299,6 +341,32 @@ object AutomationHub {
                     title = "$level%",
                     text = if (charging) "charging" else "on battery",
                     extra = "level: $level%${if (charging) " (charging)" else ""}",
+                )
+            )
+        }
+    }
+
+    /** One UI 省电模式翻转入口（v1.8.0，BroadcastReceiver 回调，主线程，快速返回）。 */
+    fun onPowerSaveChanged(enabled: Boolean) {
+        if (!_serviceRunning.value) return
+        val previous = lastPowerSaveState
+        lastPowerSaveState = enabled
+        if (previous == null || previous == enabled) return // 首个广播只初始化状态
+
+        val fired = _triggers.value.filter { trigger ->
+            trigger.enabled && trigger.source == AutomationTriggerSource.BATTERY &&
+                    ((enabled && trigger.batteryEvent == AutomationBatteryEvent.POWER_SAVE_ON) ||
+                            (!enabled && trigger.batteryEvent == AutomationBatteryEvent.POWER_SAVE_OFF))
+        }
+        fired.forEach { trigger ->
+            enqueue(
+                TriggerHit(
+                    trigger = trigger,
+                    packageName = "",
+                    appLabel = "PowerSave",
+                    title = if (enabled) "power_save_on" else "power_save_off",
+                    text = "One UI power saving mode ${if (enabled) "enabled" else "disabled"}",
+                    extra = "power_saving: $enabled",
                 )
             )
         }
@@ -618,7 +686,13 @@ object AutomationHub {
             AutomationTriggerSource.BATTERY ->
                 buildString {
                     appendLine("source: device battery event")
-                    appendLine("trigger type: ${hit.trigger.batteryEvent.name.lowercase()} (threshold ${hit.trigger.batteryLevel}%)")
+                    if (hit.trigger.batteryEvent == AutomationBatteryEvent.POWER_SAVE_ON ||
+                        hit.trigger.batteryEvent == AutomationBatteryEvent.POWER_SAVE_OFF
+                    ) {
+                        appendLine("trigger type: One UI power saving mode ${hit.trigger.batteryEvent.name.lowercase().removePrefix("power_save_")}")
+                    } else {
+                        appendLine("trigger type: ${hit.trigger.batteryEvent.name.lowercase()} (threshold ${hit.trigger.batteryLevel}%)")
+                    }
                     append("current state: ${hit.extra}")
                 }
 

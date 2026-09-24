@@ -603,4 +603,23 @@
     <string name="builtin_tool_group_live_vision_summary">Continuous screen perception stream; every frame is the current moment</string>
     <string name="builtin_tool_group_file_ops">File orchestration</string>
     <string name="builtin_tool_group_file_ops_summary">Global file management, bulk sorting, zip backups and PDF merge/split</string>
+    <string name="builtin_tool_group_samsung">Samsung One UI (specialized)</string>
+    <string name="builtin_tool_group_samsung_summary">Samsung/One UI specific: One UI state, navigation gestures, background persistence, Samsung storage orchestration</string>
+    <string name="samsung_device_summary">One UI %1$s · %2$s · Nav: %3$s</string>
+    <string name="samsung_battery_opt">Battery optimization exemption</string>
+    <string name="samsung_battery_opt_ok">Exempted — One UI can hardly deep-sleep Zafiro</string>
+    <string name="samsung_battery_opt_missing">Not exempted, tap to request</string>
+    <string name="samsung_deep_sleep">Deep sleeping apps (One UI background limits)</string>
+    <string name="samsung_deep_sleep_hint">Tap to open the One UI battery page: remove Zafiro from Deep sleeping apps and disable Put unused apps to sleep</string>
+    <string name="samsung_persistence_ok">Not force-stopped by the system in the last 24 hours</string>
+    <string name="samsung_persistence_killed">Restarted by the system %1$d time(s) in 24h — check battery limits</string>
+    <string name="samsung_not_samsung">Not a Samsung device — One UI-specific optimizations do not apply; other capabilities are unaffected</string>
+    <string name="samsung_nav_gesture">Full-screen gestures</string>
+    <string name="samsung_nav_three_button">Three-button navigation</string>
+    <string name="samsung_nav_two_button">Two-button navigation</string>
+    <string name="samsung_nav_unknown">Unknown</string>
+    <string name="automation_battery_event_powersave_on">Power saving ON</string>
+    <string name="automation_battery_event_powersave_off">Power saving OFF</string>
+    <string name="samsung_fgs_killed_title">Zafiro was put to sleep</string>
+    <string name="samsung_fgs_killed_body">One UI battery optimization may have deep-slept Zafiro. Tap to open battery settings and remove Zafiro from the restricted list.</string>
 </resources>

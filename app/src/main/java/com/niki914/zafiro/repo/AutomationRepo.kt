@@ -46,6 +46,9 @@ enum class AutomationBatteryEvent {
     CHARGING,  // 开始充电
     FULL,      // 充满（≥ 95% 视为满）
     OKAY,      // 电量从低位回升到阈值之上（解除低电）
+    // v1.8.0 Samsung/One UI：省电模式翻转（One UI 专属系统事件）
+    POWER_SAVE_ON,   // One UI 省电模式开启
+    POWER_SAVE_OFF,  // One UI 省电模式关闭
 }
 
 /** LOCATION 源：进入/离开模式。 */

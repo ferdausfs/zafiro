@@ -51,8 +51,8 @@ class FileManagerBuiltin : BuiltinTool() {
     override val description: String = """
 Full file-system orchestration over the device's shared storage and the app's private
 directories. Actions: list, read_text, write_text, move, copy, rename, delete, mkdir,
-search (glob), sort_folder (bulk-organize a folder by type/date/name), disk_usage, zip,
-unzip. Use this INSTEAD of shell commands for file tasks: results are structured,
+search (glob), sort_folder (bulk-organize a folder by type/date/name/samsung), disk_usage,
+zip, unzip. Use this INSTEAD of shell commands for file tasks: results are structured,
 survive across processes, and need no root. Paths must be absolute
 (e.g. /storage/emulated/0/Download/report.pdf). Bulk organization and automated
 backups are exactly what this tool is for.
@@ -355,6 +355,8 @@ backups are exactly what this tool is for.
 
                 "name" -> file.name.firstOrNull()?.uppercaseChar()?.toString() ?: "#"
 
+                "samsung" -> samsungBucketOf(file.name, file.extension.lowercase())
+
                 else -> categoryOf(file.extension.lowercase())
             }
             if (args.dryRun) {
@@ -399,6 +401,19 @@ backups are exactly what this tool is for.
         "apk", "apks", "xapk" -> "Apps"
         "zip", "rar", "7z", "tar", "gz" -> "Archives"
         else -> "Other"
+    }
+
+    /**
+     * v1.8.0 Samsung/One UI 档案模式：截图、相机媒体、录音按三星命名习惯分桶，
+     * 其余回落到通用类型分桶。
+     */
+    private fun samsungBucketOf(name: String, ext: String): String = when {
+        name.startsWith("Screenshot_", ignoreCase = true) -> "Screenshots"
+        name.startsWith("IMG_") && ext in CAMERA_IMAGE_EXT -> "Camera"
+        name.startsWith("VID_") && ext in CAMERA_VIDEO_EXT -> "Camera"
+        (name.startsWith("REC", ignoreCase = true) || name.startsWith("Voice", ignoreCase = true)) &&
+                ext in RECORDING_EXT -> "Recordings"
+        else -> categoryOf(ext)
     }
 
     // ------------------------------------------------------------ disk_usage
@@ -631,6 +646,11 @@ backups are exactly what this tool is for.
         private const val LOG_TAG = "niki914_nexus_FileManagerBuiltin"
         private const val MAX_READ_BYTES = 10L * 1024 * 1024
 
+        // v1.8.0 samsung 档案模式的扩展名集合
+        private val CAMERA_IMAGE_EXT = setOf("jpg", "jpeg", "png", "heic", "dng")
+        private val CAMERA_VIDEO_EXT = setOf("mp4", "3gp", "webm")
+        private val RECORDING_EXT = setOf("m4a", "3ga", "amr", "mp3", "wav", "ogg")
+
         private val SCHEMA = """
 {
   "type": "object",
@@ -671,8 +691,8 @@ backups are exactly what this tool is for.
     },
     "mode": {
       "type": "string",
-      "enum": ["type", "date", "name"],
-      "description": "sort_folder only: organize by file type (default), by year-month, or by first letter."
+      "enum": ["type", "date", "name", "samsung"],
+      "description": "sort_folder only: organize by file type (default), by year-month, by first letter, or by Samsung media naming (Screenshots/Camera/Recordings-aware)."
     },
     "dry_run": {
       "type": "boolean",

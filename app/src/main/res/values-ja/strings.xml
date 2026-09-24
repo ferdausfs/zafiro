@@ -602,4 +602,23 @@
     <string name="builtin_tool_group_live_vision_summary">連続的な画面知覚ストリーム、動的画面にも常に「今」のフレーム</string>
     <string name="builtin_tool_group_file_ops">ファイル操作</string>
     <string name="builtin_tool_group_file_ops_summary">全ストレージのファイル管理・一括整理・zip バックアップ・PDF 結合/分割</string>
+    <string name="builtin_tool_group_samsung">Samsung One UI（最適化）</string>
+    <string name="builtin_tool_group_samsung_summary">Samsung/One UI 専用：One UI 状態、ナビジェスチャ、バックグラウンド維持、Samsung ストレージ整理</string>
+    <string name="samsung_device_summary">One UI %1$s · %2$s · ナビ：%3$s</string>
+    <string name="samsung_battery_opt">電池の最適化の除外</string>
+    <string name="samsung_battery_opt_ok">除外済み — One UI はバックグラウンドを休眠させにくい</string>
+    <string name="samsung_battery_opt_missing">未除外、タップして要求</string>
+    <string name="samsung_deep_sleep">ディープスリープアプリ（One UI のバックグラウンド制限）</string>
+    <string name="samsung_deep_sleep_hint">タップして One UI の電池画面を開く：Zafiro を「ディープスリープアプリ」から外し、使用していないアプリのスリープを無効にする</string>
+    <string name="samsung_persistence_ok">過去 24 時間はシステムに強制停止されていません</string>
+    <string name="samsung_persistence_killed">過去 24 時間に %1$d 回システムが再起動 — 電池制限を確認してください</string>
+    <string name="samsung_not_samsung">Samsung 端末ではないため、One UI 固有の最適化は適用されません。他の機能には影響しません</string>
+    <string name="samsung_nav_gesture">フルスクリーンジェスチャー</string>
+    <string name="samsung_nav_three_button">3 ボタンナビゲーション</string>
+    <string name="samsung_nav_two_button">2 ボタンナビゲーション</string>
+    <string name="samsung_nav_unknown">不明</string>
+    <string name="automation_battery_event_powersave_on">省電力モード ON</string>
+    <string name="automation_battery_event_powersave_off">省電力モード OFF</string>
+    <string name="samsung_fgs_killed_title">Zafiro がスリープされました</string>
+    <string name="samsung_fgs_killed_body">One UI の電池最適化が Zafiro をディープスリープにした可能性があります。タップして電池設定を開き、制限リストから Zafiro を外してください。</string>
 </resources>

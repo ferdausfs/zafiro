@@ -26,6 +26,20 @@
         <package android:name="com.heytap.speechassist" />
         <package android:name="com.miui.voiceassist" />
 
+        <!-- v1.8.0 Samsung/One UI ecosystem (presence probes + deep links) -->
+        <package android:name="com.samsung.android.lool" />
+        <package android:name="com.samsung.android.sm.core" />
+        <package android:name="com.samsung.android.app.cocktailbarservice" />
+        <package android:name="com.samsung.android.app.routines" />
+        <package android:name="com.samsung.android.bixby.agent" />
+        <package android:name="com.samsung.android.oneconnect" />
+        <package android:name="com.sec.android.app.myfiles" />
+        <package android:name="com.samsung.android.game.gos" />
+        <package android:name="com.osp.app.signin" />
+        <package android:name="com.sec.android.app.samsungapps" />
+        <package android:name="com.samsung.android.honeyboard" />
+        <package android:name="com.sec.android.app.camera" />
+
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />

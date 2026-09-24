@@ -342,7 +342,13 @@ private fun AutomationTriggerItem.summarize(): String {
         AutomationTriggerSource.FILE_DOWNLOAD -> "Download/"
 
         AutomationTriggerSource.BATTERY ->
-            "${batteryEvent.name.lowercase()} ≤${batteryLevel}%"
+            if (batteryEvent == AutomationBatteryEvent.POWER_SAVE_ON ||
+                batteryEvent == AutomationBatteryEvent.POWER_SAVE_OFF
+            ) {
+                batteryEvent.name.lowercase()
+            } else {
+                "${batteryEvent.name.lowercase()} ≤${batteryLevel}%"
+            }
 
         AutomationTriggerSource.TIME ->
             timeOfDay + if (daysOfWeek.isEmpty()) "" else " d${daysOfWeek.sorted().joinToString(",")}"
@@ -690,6 +696,8 @@ private fun batteryEventLabel(event: AutomationBatteryEvent): String = when (eve
     AutomationBatteryEvent.CHARGING -> stringResource(R.string.automation_battery_event_charging)
     AutomationBatteryEvent.FULL -> stringResource(R.string.automation_battery_event_full)
     AutomationBatteryEvent.OKAY -> stringResource(R.string.automation_battery_event_okay)
+    AutomationBatteryEvent.POWER_SAVE_ON -> stringResource(R.string.automation_battery_event_powersave_on)
+    AutomationBatteryEvent.POWER_SAVE_OFF -> stringResource(R.string.automation_battery_event_powersave_off)
 }
 
 @Composable

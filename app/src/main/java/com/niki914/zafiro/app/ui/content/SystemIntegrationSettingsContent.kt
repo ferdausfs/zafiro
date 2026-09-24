@@ -31,7 +31,9 @@ import com.niki914.uikit.infra.component.settings.SettingsSectionSpec
 import com.niki914.uikit.infra.component.settings.SettingsSpecPageContent
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.automation.AutomationHub
+import com.niki914.zafiro.app.automation.SamsungPersistenceWatchdog
 import com.niki914.zafiro.app.ui.nav.ZafiroSettingsGroup
+import com.niki914.zafiro.chat.agentic.samsung.SamsungDevice
 
 /**
  * System Integration 设置页（v1.7.0 System-Integrated Autonomous Agent）。
@@ -56,6 +58,11 @@ fun SystemIntegrationSettingsContent(
     var accessibilityEnabled by remember { mutableStateOf(false) }
     var locationGranted by remember { mutableStateOf(false) }
     var armedTriggers by remember { mutableStateOf(0) }
+    // v1.8.0 Samsung/One UI
+    var oneUiVersion by remember { mutableStateOf("unknown") }
+    var navMode by remember { mutableStateOf(SamsungDevice.NAV_MODE_UNKNOWN) }
+    var batteryIgnored by remember { mutableStateOf(false) }
+    var killCount24h by remember { mutableStateOf(0) }
 
     fun refreshStatus() {
         contactsGranted = context.isPermissionGranted(Manifest.permission.READ_CONTACTS)
@@ -68,6 +75,10 @@ fun SystemIntegrationSettingsContent(
         }
         accessibilityEnabled = context.isAccessibilityServiceEnabled()
         armedTriggers = AutomationHub.armedTriggerCount.value
+        oneUiVersion = SamsungDevice.oneUiVersion()
+        navMode = SamsungDevice.navigationMode(context)
+        batteryIgnored = SamsungDevice.isIgnoringBatteryOptimizations(context)
+        killCount24h = SamsungPersistenceWatchdog.killCount24h.value
     }
 
     LaunchedEffect(Unit) { refreshStatus() }
@@ -173,6 +184,58 @@ fun SystemIntegrationSettingsContent(
         ),
     )
 
+    // ---- v1.8.0: Samsung / One UI Special Directives
+    if (SamsungDevice.isSamsungManufacturer) {
+        val navModeLabel = when (navMode) {
+            SamsungDevice.NAV_MODE_GESTURE -> stringResource(R.string.samsung_nav_gesture)
+            SamsungDevice.NAV_MODE_THREE_BUTTON -> stringResource(R.string.samsung_nav_three_button)
+            SamsungDevice.NAV_MODE_TWO_BUTTON -> stringResource(R.string.samsung_nav_two_button)
+            else -> stringResource(R.string.samsung_nav_unknown)
+        }
+        sections += SettingsSectionSpec(
+            layout = SettingsSectionLayout.GroupedCard,
+            rows = listOf(
+                SettingsRowSpec.Message(
+                    title = stringResource(
+                        R.string.samsung_device_summary, oneUiVersion, Build.MODEL, navModeLabel
+                    ),
+                    verticalPadding = 10.dp,
+                ),
+                SettingsRowSpec.Action(
+                    id = "samsung.battery_opt",
+                    title = stringResource(R.string.samsung_battery_opt),
+                    summary = stringResource(
+                        if (batteryIgnored) R.string.samsung_battery_opt_ok
+                        else R.string.samsung_battery_opt_missing
+                    ),
+                ),
+                SettingsRowSpec.Action(
+                    id = "samsung.deep_sleep",
+                    title = stringResource(R.string.samsung_deep_sleep),
+                    summary = stringResource(R.string.samsung_deep_sleep_hint),
+                ),
+                SettingsRowSpec.Message(
+                    title = if (killCount24h > 0) {
+                        stringResource(R.string.samsung_persistence_killed, killCount24h)
+                    } else {
+                        stringResource(R.string.samsung_persistence_ok)
+                    },
+                    verticalPadding = 10.dp,
+                ),
+            ),
+        )
+    } else {
+        sections += SettingsSectionSpec(
+            layout = SettingsSectionLayout.GroupedCard,
+            rows = listOf(
+                SettingsRowSpec.Message(
+                    title = stringResource(R.string.samsung_not_samsung),
+                    verticalPadding = 10.dp,
+                ),
+            ),
+        )
+    }
+
     SettingsSpecPageContent(
         spec = SettingsPageSpec(
             description = stringResource(R.string.sys_page_description),
@@ -202,6 +265,16 @@ fun SystemIntegrationSettingsContent(
 
                     "sys.vision_accessibility" -> openAccessibilitySettings(context)
                     "sys.all_files" -> openAllFilesAccessSettings(context)
+                    "samsung.battery_opt" -> if (!batteryIgnored) {
+                        runCatching {
+                            context.startActivity(
+                                AutomationHub.batteryOptimizationIntent(context)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        }
+                    }
+                    "samsung.deep_sleep" ->
+                        SamsungPersistenceWatchdog.openBatterySettings(context)
                     else -> Unit
                 }
 

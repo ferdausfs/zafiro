@@ -62,6 +62,13 @@ object BuiltinToolGroups {
             members = listOf("file_manager", "pdf_tools"),
         ),
         BuiltinToolGroup(
+            id = "samsung",
+            titleRes = R.string.builtin_tool_group_samsung,
+            summaryRes = R.string.builtin_tool_group_samsung_summary,
+            mode = BuiltinToolGroupMode.PER_TOOL,
+            members = listOf("samsung"),
+        ),
+        BuiltinToolGroup(
             id = "screen_operation",
             titleRes = R.string.builtin_tool_group_screen_operation,
             summaryRes = R.string.builtin_tool_group_screen_operation_summary,

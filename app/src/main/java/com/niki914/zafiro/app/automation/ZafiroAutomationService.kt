@@ -22,6 +22,7 @@ class ZafiroAutomationService : Service() {
             ),
         )
         AutomationHub.onServiceStarted()
+        SamsungPersistenceWatchdog.onServiceStarted(this)
         Logger.i(LOG_TAG, "foreground service started")
     }
 
@@ -35,6 +36,8 @@ class ZafiroAutomationService : Service() {
             ),
         )
         if (intent?.action == ACTION_STOP) {
+            // 用户主动停止：watchdog 不得把下一次启动判成系统强杀
+            SamsungPersistenceWatchdog.userStopRequested = true
             stopSelf()
             return START_NOT_STICKY
         }
@@ -43,6 +46,7 @@ class ZafiroAutomationService : Service() {
 
     override fun onDestroy() {
         AutomationHub.onServiceStopped()
+        SamsungPersistenceWatchdog.onServiceStopped(this)
         Logger.i(LOG_TAG, "foreground service stopped")
         super.onDestroy()
     }

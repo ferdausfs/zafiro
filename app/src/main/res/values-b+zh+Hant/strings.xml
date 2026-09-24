@@ -587,4 +587,23 @@
     <string name="builtin_tool_group_live_vision_summary">連續螢幕感知流，動態介面每個影格都是「此刻」</string>
     <string name="builtin_tool_group_file_ops">檔案編排</string>
     <string name="builtin_tool_group_file_ops_summary">全盤檔案管理、批量歸類、壓縮備份與 PDF 合併拆分</string>
+    <string name="builtin_tool_group_samsung">三星 One UI（專屬優化）</string>
+    <string name="builtin_tool_group_samsung_summary">Samsung/One UI 專屬：One UI 狀態、導航手勢、背景保活、三星儲存空間編排</string>
+    <string name="samsung_device_summary">One UI %1$s · %2$s · 導航：%3$s</string>
+    <string name="samsung_battery_opt">電池最佳化豁免</string>
+    <string name="samsung_battery_opt_ok">已豁免，One UI 難以休眠背景</string>
+    <string name="samsung_battery_opt_missing">未豁免，點按請求豁免</string>
+    <string name="samsung_deep_sleep">深度睡眠應用程式（One UI 背景限制）</string>
+    <string name="samsung_deep_sleep_hint">點按開啟 One UI 電池頁：把 Zafiro 移出「深度睡眠應用程式」並關閉「讓未使用的應用程式進入休眠」</string>
+    <string name="samsung_persistence_ok">過去 24 小時未被系統強制停止</string>
+    <string name="samsung_persistence_killed">過去 24 小時被系統重新啟動 %1$d 次——建議檢查電池限制</string>
+    <string name="samsung_not_samsung">目前不是三星裝置，One UI 專屬最佳化不適用；其他能力不受影響</string>
+    <string name="samsung_nav_gesture">全螢幕手勢</string>
+    <string name="samsung_nav_three_button">三鍵導覽</string>
+    <string name="samsung_nav_two_button">兩鍵導覽</string>
+    <string name="samsung_nav_unknown">未知</string>
+    <string name="automation_battery_event_powersave_on">省電模式開啟</string>
+    <string name="automation_battery_event_powersave_off">省電模式關閉</string>
+    <string name="samsung_fgs_killed_title">Zafiro 被系統休眠</string>
+    <string name="samsung_fgs_killed_body">One UI 電池最佳化可能已把 Zafiro 放入深度睡眠。點按前往電池設定，把 Zafiro 移出限制清單。</string>
 </resources>
