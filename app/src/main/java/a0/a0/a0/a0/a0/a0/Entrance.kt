@@ -80,34 +80,54 @@ class Entrance : IXposed() {
     /**
      * 从 res/raw/legacy_xposed_hooks/ 加载配置。
      * 按 package 找到 versions.json，选最近版本，再读对应 config.json。
+     *
+     * D2：本方法在宿主 App（Breeno / XiaoAi）进程内运行 —— 任何异常都会作为
+     * 未捕获协程异常杀掉宿主。createPackageContext 在模块包对宿主不可见
+     * （隐藏应用 / 双开 / 不同 user）时抛 NameNotFoundException，必须就地吞掉。
+     * 整个方法保证「失败 = 无配置」，绝不向宿主抛异常。
      */
     private fun loadConfigFromRaw(context: Context, targetPkg: String): JsonObject? {
-        // 宿主进程的 resources 是宿主包的资源表，读不到 Zafiro 的 raw 资源。
-        // 必须用 Zafiro 自己的包上下文（createPackageContext）去读 R.raw.*。
-        val moduleContext = context.createPackageContext(XValues.myPackageName, 0)
-        val versionsRawId = versionsRawIdFor(targetPkg) ?: run {
-            Logger.w(LOG_TAG, "no raw config for package=$targetPkg")
-            return null
+        return try {
+            // 宿主进程的 resources 是宿主包的资源表，读不到 Zafiro 的 raw 资源。
+            // 必须用 Zafiro 自己的包上下文（createPackageContext）去读 R.raw.*。
+            val moduleContext = try {
+                context.createPackageContext(XValues.myPackageName, 0)
+            } catch (nameNotFound: android.content.pm.PackageManager.NameNotFoundException) {
+                Logger.w(
+                    LOG_TAG,
+                    "module package not visible to host pkg=$targetPkg module=${XValues.myPackageName} " +
+                            "reason=${nameNotFound.message}"
+                )
+                return null
+            }
+            val versionsRawId = versionsRawIdFor(targetPkg) ?: run {
+                Logger.w(LOG_TAG, "no raw config for package=$targetPkg")
+                return null
+            }
+            val supportedVersions = readVersions(moduleContext, versionsRawId) ?: return null
+            val installedVersion = context.getInstalledPackageVersion(targetPkg)?.versionCode
+            if (installedVersion == null) {
+                Logger.w(LOG_TAG, "cannot get installed version for package=$targetPkg")
+                return null
+            }
+            val nearestVersion = nearestVersionCode(installedVersion, supportedVersions) ?: run {
+                Logger.w(LOG_TAG, "no supported version found for package=$targetPkg")
+                return null
+            }
+            Logger.i(
+                LOG_TAG,
+                "config source: installed=$installedVersion nearest=$nearestVersion supported=$supportedVersions"
+            )
+            val configRawId = configRawIdFor(targetPkg, nearestVersion) ?: run {
+                Logger.w(LOG_TAG, "no config mapping for package=$targetPkg version=$nearestVersion")
+                return null
+            }
+            readConfig(moduleContext, configRawId)
+        } catch (t: Throwable) {
+            // D2：兜底 —— 宿主进程内绝不允许因模块配置加载失败而崩溃。
+            Logger.w(LOG_TAG, "loadConfigFromRaw failed (host protected) reason=${t.message}")
+            null
         }
-        val supportedVersions = readVersions(moduleContext, versionsRawId) ?: return null
-        val installedVersion = context.getInstalledPackageVersion(targetPkg)?.versionCode
-        if (installedVersion == null) {
-            Logger.w(LOG_TAG, "cannot get installed version for package=$targetPkg")
-            return null
-        }
-        val nearestVersion = nearestVersionCode(installedVersion, supportedVersions) ?: run {
-            Logger.w(LOG_TAG, "no supported version found for package=$targetPkg")
-            return null
-        }
-        Logger.i(
-            LOG_TAG,
-            "config source: installed=$installedVersion nearest=$nearestVersion supported=$supportedVersions"
-        )
-        val configRawId = configRawIdFor(targetPkg, nearestVersion) ?: run {
-            Logger.w(LOG_TAG, "no config mapping for package=$targetPkg version=$nearestVersion")
-            return null
-        }
-        return readConfig(moduleContext, configRawId)
     }
 
     private fun versionsRawIdFor(pkg: String): Int? = when (pkg) {

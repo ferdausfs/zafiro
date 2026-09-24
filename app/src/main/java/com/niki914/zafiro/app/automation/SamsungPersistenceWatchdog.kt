@@ -73,21 +73,25 @@ object SamsungPersistenceWatchdog {
             }
         }
         // 服务运行期间：期望运行中；若下次启动时仍是此状态 → 说明进程被突然杀掉
+        // E：kill 检测状态必须 commit() —— 这些记录的全部意义就是在进程被
+        // 突然杀掉后仍可判定；apply() 的异步落盘在进程死亡时会丢失未刷写数据，
+        // 恰好是本监视器最需要写盘成功的场景。
         prefs.edit()
             .putLong(KEY_LAST_STOP_AT, System.currentTimeMillis())
             .putBoolean(KEY_LAST_STOP_USER, false)
             .putInt(KEY_LAST_BOOT_COUNT, bootCount)
-            .apply()
+            .commit()
         refreshFlows(context)
     }
 
     fun onServiceStopped(context: Context) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        // E：同 onServiceStarted —— 停止状态记录必须跨进程死亡存活（commit）。
         prefs.edit()
             .putLong(KEY_LAST_STOP_AT, System.currentTimeMillis())
             .putBoolean(KEY_LAST_STOP_USER, userStopRequested)
             .putInt(KEY_LAST_BOOT_COUNT, currentBootCount(context))
-            .apply()
+            .commit()
         userStopRequested = false
         Logger.i(LOG_TAG, "service stopped (userStopRequested handled)")
     }
@@ -110,9 +114,10 @@ object SamsungPersistenceWatchdog {
             .split(',')
             .mapNotNull(String::toLongOrNull)
             .filter { it >= windowStart } + now
+        // E：强杀记录用 commit() —— 若 apply 丢失，24h 强杀计数与提醒冷却都会失真。
         prefs.edit()
             .putString(KEY_KILL_TIMES, times.joinToString(","))
-            .apply()
+            .commit()
         Logger.w(LOG_TAG, "system kill detected; kills in 24h window=${times.size}")
     }
 
@@ -152,7 +157,8 @@ object SamsungPersistenceWatchdog {
             .build()
         try {
             nm.notify(KILLED_NOTIFICATION_ID, notification)
-            prefs.edit().putLong(KEY_LAST_WARN_AT, now).apply()
+            // E：提醒冷却时间戳同批 commit，避免重复提醒。
+            prefs.edit().putLong(KEY_LAST_WARN_AT, now).commit()
             Logger.w(LOG_TAG, "persistence warning notification posted")
         } catch (t: Throwable) {
             Logger.w(LOG_TAG, "persistence warning failed: ${t.message}")
