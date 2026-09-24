@@ -73,6 +73,11 @@ object AutomationHub {
     private const val TIME_TICK_INTERVAL_MS = 30_000L
     private const val FULL_BATTERY_PERCENT = 95
 
+    // Phase 2（item 2）：时间触发器 occurrence 去重上限与扫描窗口钳制
+    private const val TIME_FIRED_SET_LIMIT = 1024
+    private const val MILLIS_PER_MINUTE = 60_000L
+    private const val FRESHNESS_WINDOW_MIN = 31L // 与 TimeTriggerScheduler.FRESHNESS_MS 对齐
+
     private var appContext: Context? = null
     private var scope: CoroutineScope? = null
     private var consumerJob: Job? = null
@@ -99,6 +104,10 @@ object AutomationHub {
     private val queue = Channel<TriggerHit>(QUEUE_CAPACITY, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private val lastFiredAtMs = HashMap<String, Long>()
     private var alertNotificationId = ALERT_NOTIFICATION_ID_BASE
+
+    /** Phase 2：已入队的时间触发器发生时刻（"triggerId:occMin"），ticker/闹钟/Worker 三路径共用去重。 */
+    private val firedTimeOccurrences =
+        java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap<String, Boolean>())
 
     private val _listenerConnected = MutableStateFlow(false)
     val listenerConnected: StateFlow<Boolean> = _listenerConnected
@@ -159,6 +168,8 @@ object AutomationHub {
         syncPowerSaveReceiver(ctx, triggers)
         syncTimeTicker(triggers)
         syncLocationWatch(ctx, triggers)
+        // Phase 2（item 2）：触发器变化后重排下一发精确闹钟
+        TimeTriggerScheduler.rearm(ctx, triggers)
         Logger.d(
             LOG_TAG,
             "reloadTriggers total=${triggers.size} armed=${_armedTriggerCount.value}"
@@ -405,31 +416,73 @@ object AutomationHub {
         }
     }
 
-    /** 定时入口（30s 粒度协程回调）；分钟匹配 + 星期过滤。 */
+    /** 定时入口（30s 粒度协程回调）；Phase 2 起闹钟/Worker 兜底共用 fireDueTimeTriggers。 */
     fun onTimeTick() {
-        if (!_serviceRunning.value) return
-        val now = java.util.Calendar.getInstance()
-        val hhmm = String.format(
-            java.util.Locale.US, "%02d:%02d", now.get(java.util.Calendar.HOUR_OF_DAY), now.get(java.util.Calendar.MINUTE)
-        )
-        val dayOfWeek = (now.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7 + 1 // 1=Mon..7=Sun
-        val fired = _triggers.value.filter { trigger ->
-            trigger.enabled && trigger.source == AutomationTriggerSource.TIME &&
-                    trigger.timeOfDay == hhmm &&
-                    (trigger.daysOfWeek.isEmpty() || dayOfWeek in trigger.daysOfWeek)
+        val nowMin = System.currentTimeMillis() / MILLIS_PER_MINUTE
+        fireDueTimeTriggers(fromMin = nowMin, toMin = nowMin)
+    }
+
+    /** 触发器快照（供 TimeTriggerScheduler 重排闹钟；只读）。 */
+    fun triggersSnapshot(): List<AutomationTrigger> = _triggers.value
+
+    /**
+     * Phase 2（item 2）：时间触发器的统一判定入口 —— 进程内 30s ticker、
+     * AlarmManager 精确闹钟、WorkManager 周期兑底三条路径都汇到这里。
+     *
+     * 扫描 [fromMin, toMin]（epoch 分钟，闭区间）内属于启用 TIME 触发器的发生
+     * 时刻；"triggerId:occurrenceMin" 进程内去重（多路径同一分钟只入队一次）
+     * + 既有冷却；服务未运行时直接返回（时间触发器是主动模式能力，语义不变）。
+     * 分钟匹配口径与旧 onTimeTick 一致（本地时区 HH:mm，dayOfWeek 1=Mon..7=Sun）。
+     *
+     * @return 实际入队次数（诊断用）
+     */
+    fun fireDueTimeTriggers(fromMin: Long, toMin: Long): Int {
+        if (!_serviceRunning.value) return 0
+        if (toMin < fromMin) return 0
+        val from = maxOf(fromMin, toMin - FRESHNESS_WINDOW_MIN) // 窗口钳制，防御异常入参
+        val armed = _triggers.value.filter {
+            it.enabled && it.source == AutomationTriggerSource.TIME &&
+                    TimeTriggerScheduler.parseTimeOfDay(it.timeOfDay) != null
         }
-        fired.forEach { trigger ->
-            enqueue(
-                TriggerHit(
-                    trigger = trigger,
-                    packageName = "",
-                    appLabel = "Schedule",
-                    title = hhmm,
-                    text = "scheduled time reached",
-                    extra = "time: $hhmm (day $dayOfWeek)",
-                )
+        if (armed.isEmpty()) return 0
+        var firedCount = 0
+        for (occMin in from..toMin) {
+            val cal = java.util.Calendar.getInstance()
+            cal.timeInMillis = occMin * MILLIS_PER_MINUTE
+            val hhmm = String.format(
+                java.util.Locale.US, "%02d:%02d",
+                cal.get(java.util.Calendar.HOUR_OF_DAY), cal.get(java.util.Calendar.MINUTE),
             )
+            val dayOfWeek = (cal.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7 + 1 // 1=Mon..7=Sun
+            for (trigger in armed) {
+                if (trigger.timeOfDay != hhmm) continue
+                if (!(trigger.daysOfWeek.isEmpty() || dayOfWeek in trigger.daysOfWeek)) continue
+                val key = "${trigger.id}:$occMin"
+                if (!firedTimeOccurrences.add(key)) continue // 本进程已触发过该发生时刻
+                if (isCooldownActive(trigger)) {
+                    // 冷却中：不入队；不记 occurrence（同分钟后续 tick 仍有机会补上）
+                    firedTimeOccurrences.remove(key)
+                    continue
+                }
+                if (firedTimeOccurrences.size > TIME_FIRED_SET_LIMIT) {
+                    // 分钟粒度键（带 occMin 时间戳语义），整体清理的代价远小于维护 LRU
+                    firedTimeOccurrences.clear()
+                    firedTimeOccurrences.add(key)
+                }
+                enqueue(
+                    TriggerHit(
+                        trigger = trigger,
+                        packageName = "",
+                        appLabel = "Schedule",
+                        title = hhmm,
+                        text = "scheduled time reached",
+                        extra = "time: $hhmm (day $dayOfWeek)",
+                    )
+                )
+                firedCount++
+            }
         }
+        return firedCount
     }
 
     /** 位置更新入口；ENTER/EXIT 通过进/出状态翻转判定（带迟滞）。 */
@@ -596,21 +649,25 @@ object AutomationHub {
     }
 
     private fun enqueue(hit: TriggerHit) {
-        val now = System.currentTimeMillis()
-        val cooldownMs = hit.trigger.cooldownSeconds * 1000L
-        val last = lastFiredAtMs[hit.trigger.id] ?: 0L
-        if (now - last < cooldownMs) {
+        if (isCooldownActive(hit.trigger)) {
             Logger.d(
                 LOG_TAG,
-                "cooldown active trigger=${hit.trigger.id} remainingMs=${cooldownMs - (now - last)}"
+                "cooldown active trigger=${hit.trigger.id}"
             )
             return
         }
-        lastFiredAtMs[hit.trigger.id] = now
+        lastFiredAtMs[hit.trigger.id] = System.currentTimeMillis()
         appendLog("[hit] ${hit.trigger.name} <- ${hit.appLabel.ifBlank { hit.packageName }}")
         // C1：DROP_OLDEST 策略下 trySend 恒成功（满时内部丢最旧）；不再有
         // 「记了冷却但事件被丢」的死分支 —— 冷却记录与入队结果始终一致。
         queue.trySend(hit)
+    }
+
+    /** Phase 2：冷却判定独立成谓词 —— 时间触发器的 occurrence 去重需要先探冷却再记账。 */
+    private fun isCooldownActive(trigger: AutomationTrigger): Boolean {
+        val cooldownMs = trigger.cooldownSeconds * 1000L
+        val last = lastFiredAtMs[trigger.id] ?: 0L
+        return System.currentTimeMillis() - last < cooldownMs
     }
 
     // ------------------------------------------------------------ execution

@@ -135,6 +135,8 @@ dependencies {
     implementation("androidx.annotation:annotation:1.9.1")
     implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.documentfile:documentfile:1.0.1")
+    // Phase 2：时间触发器兜底 + 服务看门狗（按需初始化，仅主进程，见 App.on-demand Configuration.Provider）
+    implementation("androidx.work:work-runtime-ktx:2.10.1")
 
     // Compose
     implementation("androidx.compose.material3:material3:1.5.0-alpha22")

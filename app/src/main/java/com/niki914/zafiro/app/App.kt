@@ -11,6 +11,7 @@ import com.niki914.permission.PermissionState
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.app.automation.AutomationHub
 import com.niki914.zafiro.app.automation.BackgroundTaskHub
+import com.niki914.zafiro.app.automation.TimeTriggerWorker
 import com.niki914.zafiro.app.conversation.ConversationPersister
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.overlay.ToolPermissionOverlay
@@ -29,9 +30,19 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.io.File
 
-class App : Application() {
+class App : Application(), androidx.work.Configuration.Provider {
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /**
+     * Phase 2：WorkManager 按需初始化（默认 initializer 已在 manifest 移除）。
+     * 只在主进程首次 getInstance 时装配；:python 进程不使用 WorkManager，
+     * 与「主进程专属初始化」的整体策略一致。
+     */
+    override val workManagerConfiguration: androidx.work.Configuration
+        get() = androidx.work.Configuration.Builder()
+            .setMinimumLoggingLevel(android.util.Log.WARN)
+            .build()
 
     override fun onCreate() {
         super.onCreate()
@@ -67,6 +78,8 @@ class App : Application() {
 
         // 主动自动化中枢：事件源 → 触发器匹配 → Agent 唤醒（主进程专属）
         AutomationHub.init(applicationContext, applicationScope)
+        // Phase 2：时间触发器 WorkManager 周期兑底（AlarmManager 之外的第三层）
+        TimeTriggerWorker.ensureScheduled(applicationContext)
         // 后台任务中枢：回合与 UI 生命周期解耦（FGS 保活 + 完成通知）
         BackgroundTaskHub.init(applicationContext, applicationScope)
         // PDF 文本提取引擎（通用文档上传，com.tom-roush:pdfbox-android）

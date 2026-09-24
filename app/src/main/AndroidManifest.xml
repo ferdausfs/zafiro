@@ -165,6 +165,22 @@
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+        <!-- Phase 2：时间触发器精确闹钟（仅本应用与系统可投递） -->
+        <receiver
+            android:name="com.niki914.zafiro.app.automation.TimeTriggerAlarmReceiver"
+            android:enabled="true"
+            android:exported="false" />
 
+        <!-- Phase 2：WorkManager 按需初始化（App 实现 Configuration.Provider，
+             避免默认 initializer 在 :python 等非主进程装配） -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
     </application>
 </manifest>
