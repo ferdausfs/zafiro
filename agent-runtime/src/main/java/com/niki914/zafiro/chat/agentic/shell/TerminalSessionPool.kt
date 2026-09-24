@@ -41,6 +41,16 @@ object TerminalSessionPool {
     // 与 ToolOutputTruncator.DEFAULT_MAX_BYTES 对齐；readSession 截断由统一入口处理并导出全量
     // FIXME(async-refactor): 异步轮询链路重构时一并收口 readSession 的上限与导出语义
     private const val DEFAULT_READ_MAX_BYTES = ToolOutputTruncator.DEFAULT_MAX_BYTES
+
+    /**
+     * collector 内存缓冲单流上限（chars）。长驻命令（ping/logcat/yes）持续产出时
+     * 不设上限会一直涨到 OOM；超限后从头丢弃（保留尾部 —— 命令输出语义是
+     * truncateTail），DELTA 偏移同步回退。数值 ≈ 1-2MB 堆/流，读侧 readSession
+     * 仍有 ToolOutputTruncator 的 50KB/2000 行硬限，全量输出靠导出文件兜底。
+     */
+    internal const val MAX_COLLECTED_CHARS = 512 * 1024
+    /** ContextProvider 等待上限（A5）：冷启动早期 provide 未到时不再永久挂起。 */
+    private const val CONTEXT_WAIT_TIMEOUT_MS = 10_000L
     private const val GENERATED_HANDLE_COLLISION_MESSAGE = "Generated session handle collision."
     private val PUBLIC_HANDLE_REGEX: Regex = Regex("^[0-9a-f]{4}$")
     private val lock = Any()
@@ -369,16 +379,12 @@ object TerminalSessionPool {
         val maxChars = maxBytes.coerceAtLeast(1)
         val snapshot = synchronized(state.lock) {
             val rawStdout = when (mode) {
-                TerminalReadMode.DELTA -> state.stdout.substring(state.stdoutDeltaOffset)
-                TerminalReadMode.SNAPSHOT -> state.stdout.toString()
+                TerminalReadMode.DELTA -> state.stdout.readDelta()
+                TerminalReadMode.SNAPSHOT -> state.stdout.snapshot()
             }
             val rawStderr = when (mode) {
-                TerminalReadMode.DELTA -> state.stderr.substring(state.stderrDeltaOffset)
-                TerminalReadMode.SNAPSHOT -> state.stderr.toString()
-            }
-            if (mode == TerminalReadMode.DELTA) {
-                state.stdoutDeltaOffset = state.stdout.length
-                state.stderrDeltaOffset = state.stderr.length
+                TerminalReadMode.DELTA -> state.stderr.readDelta()
+                TerminalReadMode.SNAPSHOT -> state.stderr.snapshot()
             }
             InteractiveReadSnapshot(
                 stdout = rawStdout.takeLast(maxChars),
@@ -518,8 +524,9 @@ object TerminalSessionPool {
         )
 
         val asyncId = UUID.randomUUID().toString()
-        val stdoutPartial = StringBuilder()
-        val stderrPartial = StringBuilder()
+        // A4：collector 缓冲带上限（保留尾部），长驻命令不再无界增长
+        val stdoutPartial = CappedBuffer(MAX_COLLECTED_CHARS)
+        val stderrPartial = CappedBuffer(MAX_COLLECTED_CHARS)
         val stateLock = Any()
         lateinit var state: AsyncState
         val collectorJob = holder.scope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -557,8 +564,8 @@ object TerminalSessionPool {
             execJob = execJob,
             collectorJob = collectorJob,
             startTimeMs = startTimeMs,
-            stdoutPartial = stdoutPartial,
-            stderrPartial = stderrPartial,
+            stdout = stdoutPartial,
+            stderr = stderrPartial,
             lock = stateLock,
             notifyOnComplete = notifyOnComplete,
         )
@@ -651,16 +658,12 @@ object TerminalSessionPool {
             val output = synchronized(asyncState.lock) {
                 when (mode) {
                     TerminalReadMode.DELTA -> {
-                        val stdoutDelta =
-                            asyncState.stdoutPartial.substring(asyncState.stdoutDeltaOffset)
-                        val stderrDelta =
-                            asyncState.stderrPartial.substring(asyncState.stderrDeltaOffset)
-                        asyncState.stdoutDeltaOffset = asyncState.stdoutPartial.length
-                        asyncState.stderrDeltaOffset = asyncState.stderrPartial.length
+                        val stdoutDelta = asyncState.stdout.readDelta()
+                        val stderrDelta = asyncState.stderr.readDelta()
                         stdoutDelta + stderrDelta
                     }
 
-                    TerminalReadMode.SNAPSHOT -> asyncState.stdoutPartial.toString() + asyncState.stderrPartial.toString()
+                    TerminalReadMode.SNAPSHOT -> asyncState.stdout.snapshot() + asyncState.stderr.snapshot()
                 }
             }
             return TerminalReadOutcome.Running(
@@ -810,7 +813,13 @@ object TerminalSessionPool {
     }
 
     private suspend fun createLibTermRuntimePort(scope: CoroutineScope): TerminalRuntimePort {
-        val context = ContextProvider.await().applicationContext
+        // A5：带超时的 Context 等待。此前 ContextProvider.await() 无限期挂起 ——
+        // provide 永远不到时终端运行时初始化（连带 open/exec）永久卡死。
+        val context = ContextProvider.await(CONTEXT_WAIT_TIMEOUT_MS)?.applicationContext
+            ?: throw IllegalStateException(
+                "Terminal runtime initialization timed out: application context " +
+                        "not available after ${CONTEXT_WAIT_TIMEOUT_MS}ms."
+            )
         return LibTermTerminalRuntimePort(
             runtime = LibTerm.runtime(context = context, scope = scope) {},
         )
@@ -860,6 +869,8 @@ object TerminalSessionPool {
         val state = InteractiveState(
             inputLock = Mutex(),
             lock = Any(),
+            stdout = CappedBuffer(MAX_COLLECTED_CHARS),
+            stderr = CappedBuffer(MAX_COLLECTED_CHARS),
         )
         synchronized(lock) {
             interactiveStates[entry.handle] = state
@@ -878,6 +889,24 @@ object TerminalSessionPool {
         synchronized(state.lock) {
             state.collectorJob = collectorJob
         }
+    }
+
+    /**
+     * A2 支撑：把一个「前台 exec 超时后仍存活」的本地会话升级为可读会话 ——
+     * 挂上 interactive collector，此后命令进程继续产出的输出全部入缓冲，
+     * agent 可用 action=read（DELTA）持续取回。已可读/会话不存在返回 false 语义：
+     * 已存在 interactive collector → true；会话缺失或运行时已销毁 → false。
+     */
+    suspend fun promoteToInteractive(session: String): Boolean {
+        val (entry, holder) = synchronized(lock) {
+            val entry = sessions[session] ?: return false
+            val holder = runtimeHolder ?: return false
+            if (interactiveStates.containsKey(session)) return true
+            entry to holder
+        }
+        startInteractiveCollector(entry = entry, holder = holder)
+        Logger.i(LOG_TAG, "session promoted to readable after foreground timeout handle=$session")
+        return true
     }
 
     /**
@@ -951,11 +980,11 @@ object TerminalSessionPool {
         return ToolOutputTruncator.filterForAgent(fullContent = text, exportDir = exportDir)
     }
 
-    /** 截断导出目录（filesDir/tool_output）；无 Context（单测）时返回 null（不导出）。 */
+    /** 截断导出目录（filesDir/tool_output）；Context 未就绪时短暂等待，仍无则 null（不导出）。 */
     internal var exportDirOverride: java.io.File? = null
 
-    private fun exportDir(): java.io.File? =
-        exportDirOverride ?: ToolOutputTruncator.defaultExportDir()
+    private suspend fun exportDir(): java.io.File? =
+        exportDirOverride ?: ToolOutputTruncator.resolveExportDir()
 
     private fun mergedOutput(result: CommandResult): String {
         return result.stdoutText() + result.stderrText()
@@ -1101,29 +1130,54 @@ private data class AsyncState(
     val execJob: Job,
     val collectorJob: Job,
     val startTimeMs: Long,
-    val stdoutPartial: StringBuilder,
-    val stderrPartial: StringBuilder,
+    val stdout: CappedBuffer,
+    val stderr: CappedBuffer,
     val lock: Any,
     val notifyOnComplete: Boolean = false,
     var result: CommandResult? = null,
     var failure: TerminalFailure? = null,
     var unexpectedError: Throwable? = null,
-    var stdoutDeltaOffset: Int = 0,
-    var stderrDeltaOffset: Int = 0,
 )
 
 private data class InteractiveState(
     val inputLock: Mutex,
     val lock: Any,
-    val stdout: StringBuilder = StringBuilder(),
-    val stderr: StringBuilder = StringBuilder(),
+    val stdout: CappedBuffer,
+    val stderr: CappedBuffer,
     val writeResults: MutableMap<String, InteractiveWriteResult> = linkedMapOf(),
     var collectorJob: Job? = null,
-    var stdoutDeltaOffset: Int = 0,
-    var stderrDeltaOffset: Int = 0,
     var inputSequence: Long = 0L,
     var outputSequence: Long = 0L,
 )
+
+/**
+ * A4：带上限的 collector 缓冲。追加超过 [capChars] 时从头丢弃约一半（摊销
+ * delete 开销，避免在阈值附近反复 O(n) 裁剪），DELTA 偏移同步回退，保证
+ * 「已消费位置」语义不变。必须在持有所属状态的锁时使用。
+ */
+internal class CappedBuffer(private val capChars: Int) {
+    private val sb = StringBuilder()
+    private var deltaOffset = 0
+
+    fun append(text: String) {
+        sb.append(text)
+        val excess = sb.length - capChars
+        if (excess <= 0) return
+        val drop = maxOf(excess, capChars / 2).coerceAtMost(sb.length)
+        sb.delete(0, drop)
+        deltaOffset = maxOf(0, deltaOffset - drop)
+    }
+
+    /** DELTA 读：返回未消费尾部并推进偏移。 */
+    fun readDelta(): String {
+        val delta = sb.substring(deltaOffset)
+        deltaOffset = sb.length
+        return delta
+    }
+
+    /** SNAPSHOT 读：返回当前保留的全文（头部已裁剪的部分不可回读）。 */
+    fun snapshot(): String = sb.toString()
+}
 
 private data class InteractiveWriteResult(
     val bytesWritten: Int,

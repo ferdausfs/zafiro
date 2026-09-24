@@ -42,25 +42,31 @@ class TerminalBuiltin(
     override val name: String = "terminal"
 
     override val description: String =
-        "Execute shell commands in an Android terminal environment. Working directory and filesystem state " +
-                "persist between calls within a session; exported environment variables persist within a session " +
-                "and reset when the session closes.\n" +
+        "Execute shell commands in an Android terminal environment.\n" +
                 "\n" +
                 "Command mode (default): pass command, optionally timeout in seconds (default 180). " +
-                "A foreground command returns when it finishes; a command still running when the timeout " +
-                "elapses returns a timeout result and its session is released.\n" +
+                "A foreground command opens a ONE-SHOT session and closes it when the command finishes — " +
+                "working directory and environment do NOT persist between foreground calls; pass " +
+                "workdir explicitly or use background mode if you need state to carry over.\n" +
+                "\n" +
+                "A command still running when the timeout elapses returns a timeout result with the " +
+                "partial output AND keeps the session alive (session_id is returned): the process " +
+                "keeps running and its new output accumulates — poll with action=\"read\" on that " +
+                "session_id, or release it with action=\"close\". Nothing is lost on timeout.\n" +
                 "\n" +
                 "Background mode: set background=true to start a command asynchronously; the response returns " +
                 "a session_id. A background task notifies completion only when notify_on_complete=true is set; " +
                 "otherwise poll it with action=\"read\". Use action=\"write\" (no newline appended) or " +
-                "\"submit\" (newline appended) to send stdin; action=\"close\" releases the session.\n" +
+                "\"submit\" (newline appended) to send stdin; action=\"close\" releases the session. Background " +
+                "sessions persist until action=\"close\".\n" +
                 "\n" +
                 "Backend: \"local\" (default) executes on the device shell with identity \"user\" (default), " +
                 "\"root\" (via su), or \"shizuku\". \"ssh\" connects to a remote host (host, username, " +
                 "password) and requires background=true.\n" +
                 "\n" +
                 "Foreground results are JSON with stdout, stderr, and exit_code. Sessions opened for a " +
-                "foreground command close automatically; background sessions stay open until action=\"close\"."
+                "foreground command close automatically on completion; timed-out foreground commands " +
+                "remain readable as described above."
 
     override val defaultEnabled: Boolean = true
 
@@ -162,10 +168,14 @@ class TerminalBuiltin(
 
                 is TerminalCommandOutcome.Timeout -> {
                     val result = outcome.result
+                    // A2：超时不丢输出 —— 会话保持存活并升级为可读，进程继续跑，
+                    // 新产出经 collector 积累，agent 用 session_id + action=read 续读。
+                    val kept = TerminalSessionPool.promoteToInteractive(outcome.session)
                     TerminalToolResponse.commandTimeoutFlat(
                         stdout = filteredStdout(result, mergeStderr),
                         stderr = if (mergeStderr) "" else result.stderrText(),
                         timeoutSec = timeoutMs / 1000L,
+                        sessionId = if (kept) outcome.session else null,
                     )
                 }
 
@@ -190,7 +200,10 @@ class TerminalBuiltin(
             }
         } finally {
             // Critical: the session opened for this one-shot command must be
-            // closed on every outcome branch, including Failure.
+            // closed on every outcome branch, including Failure. A2 exception:
+            // on Timeout the timed-out process keeps running and the session was
+            // already promoted to a readable session in the Timeout branch —
+            // closing it here would kill the process and destroy later output.
             closeForegroundSession(outcome)
         }
     }
@@ -389,11 +402,16 @@ class TerminalBuiltin(
      * Best-effort close of the session opened for a one-shot foreground command.
      * Guarantees the session is released on every outcome branch, including
      * Failure (whose session is nullable).
+     *
+     * A2 exception: Timeout does NOT close — the timed-out process keeps
+     * running and the session was already promoted to a readable session in
+     * the Timeout branch; closing it would kill the process and destroy any
+     * output produced after the timeout.
      */
     private suspend fun closeForegroundSession(outcome: TerminalCommandOutcome) {
         when (outcome) {
             is TerminalCommandOutcome.Success -> TerminalSessionPool.close(outcome.session)
-            is TerminalCommandOutcome.Timeout -> TerminalSessionPool.close(outcome.session)
+            is TerminalCommandOutcome.Timeout -> Unit
 
             is TerminalCommandOutcome.Failure -> {
                 outcome.session?.let { TerminalSessionPool.close(it) }

@@ -23,22 +23,33 @@ object TerminalToolResponse {
         ).toString()
     }
 
-    /** Hermes-aligned flat timeout: {"stdout":"...(partial)...","stderr":"","error":{"code":"TIMEOUT","message":"..."}} */
+    /**
+     * Hermes-aligned flat timeout: {"stdout":"...(partial)...","stderr":"","error":{"code":"TIMEOUT","message":"..."}}
+     *
+     * A2：[sessionId] 非空时（会话已升级为可读）附加 session_id，并把指引改为
+     * 「续读 / 释放」而不是「session 已释放」—— 超时的进程仍在跑，后续输出可用
+     * action=read 按 session_id 续读，action=close 释放。
+     */
     fun commandTimeoutFlat(
         stdout: String,
         stderr: String,
         timeoutSec: Long,
+        sessionId: String? = null,
     ): String {
-        return JsonObject(
-            mapOf(
-                "stdout" to JsonPrimitive(stdout),
-                "stderr" to JsonPrimitive(stderr),
-                "error" to errorObject(
-                    code = "TIMEOUT",
-                    message = "Command timed out after ${timeoutSec}s. Increase timeout, run a smaller command, or use background=true.",
-                ),
-            )
-        ).toString()
+        val message = if (sessionId != null) {
+            "Command timed out after ${timeoutSec}s but is still running. Partial output shown; " +
+                    "poll session_id=\"$sessionId\" with action=\"read\" for new output, or " +
+                    "action=\"close\" to release the session."
+        } else {
+            "Command timed out after ${timeoutSec}s. Increase timeout, run a smaller command, or use background=true."
+        }
+        val payload = linkedMapOf<String, JsonElement>(
+            "stdout" to JsonPrimitive(stdout),
+            "stderr" to JsonPrimitive(stderr),
+        )
+        sessionId?.let { payload["session_id"] = JsonPrimitive(it) }
+        payload["error"] = errorObject(code = "TIMEOUT", message = message)
+        return JsonObject(payload).toString()
     }
 
     /** Hermes-aligned background acceptance: {"session_id":"a3f9","background":true,"output":"Background process started."} */

@@ -1,6 +1,8 @@
 package com.niki914.zafiro.util
 
+import android.content.Context
 import com.niki914.logging.Logger
+import com.niki914.xposed.api.util.ContextProvider
 import java.io.File
 import kotlin.random.Random
 
@@ -23,8 +25,32 @@ object ToolOutputTruncator {
      * （不导出），调用方无需各自接 ContextProvider。
      */
     fun defaultExportDir(): File? {
-        val context = com.niki914.xposed.api.util.ContextProvider.awaitIfAvailable() ?: return null
-        return File(context.filesDir, EXPORT_DIR_NAME)
+        val context = ContextProvider.awaitIfAvailable() ?: return null
+        return exportDirForContext(context)
+    }
+
+    /**
+     * A6：挂起解析导出目录 —— Context 未就绪时短暂等待（默认 3s）而不是立即
+     * 放弃导出。等待超时仍无 Context 返回 null（没有 Context 就没有 cacheDir，
+     * 此时只能截断，无法落盘全量输出）。
+     */
+    suspend fun resolveExportDir(timeoutMs: Long = 3_000): File? {
+        val context = ContextProvider.awaitIfAvailable()
+            ?: ContextProvider.await(timeoutMs)
+            ?: return null
+        return exportDirForContext(context)
+    }
+
+    /**
+     * A6：优先 filesDir/tool_output；filesDir 不可用（异常宿主环境）时回退
+     * cacheDir/tool_output —— 落盘位置降级，但全量输出不丢。两者都失败才
+     * 返回 null（仅截断不导出）。
+     */
+    fun exportDirForContext(context: Context): File? {
+        val filesExport = runCatching { File(context.filesDir, EXPORT_DIR_NAME) }.getOrNull()
+        if (filesExport != null) return filesExport
+        Logger.w(LOG_TAG, "filesDir unavailable, falling back to cacheDir for tool output export")
+        return runCatching { File(context.cacheDir, EXPORT_DIR_NAME) }.getOrNull()
     }
 
     const val DEFAULT_MAX_LINES = 2000

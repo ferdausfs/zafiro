@@ -75,6 +75,8 @@ object PyRuntime {
     private const val EXEC_GRACE_MS = 2_000L
     private const val CONNECT_TIMEOUT_MS = 10_000L
     private const val PROCESS_DIE_SETTLE_MS = 200L
+    /** A5：Context 等待上限；与 CONNECT_TIMEOUT_MS 同量级。 */
+    private const val CONTEXT_WAIT_TIMEOUT_MS = 10_000L
 
     private val connectionMutex = Mutex()
 
@@ -280,7 +282,13 @@ object PyRuntime {
         if (testService != null || service != null) return
         connectionMutex.withLock {
             if (testService != null || service != null) return
-            val ctx = ContextProvider.await().applicationContext
+            // A5：带超时等待 Context；此前无限期挂起会一直占着 connectionMutex，
+            // 让所有后续 python 执行都跟着永久卡死。
+            val ctx = ContextProvider.await(CONTEXT_WAIT_TIMEOUT_MS)?.applicationContext
+                ?: throw IllegalStateException(
+                    "Python worker cannot bind: application context not available " +
+                            "after ${CONTEXT_WAIT_TIMEOUT_MS}ms."
+                )
             appContext = ctx
             bindLocked(ctx)
         }

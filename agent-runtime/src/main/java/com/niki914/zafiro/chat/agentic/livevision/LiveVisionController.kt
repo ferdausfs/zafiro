@@ -50,6 +50,8 @@ object LiveVisionController {
     private const val PERIODIC_CAPTURE_MS = 12_000L
     private const val MAX_SESSION_MS = 10 * 60 * 1000L
     private const val MAX_FRAMES = 5
+    /** A5：Context 等待上限；超时放弃像素截屏（best-effort 语义）。 */
+    private const val CONTEXT_WAIT_TIMEOUT_MS = 5_000L
     private const val SCREENSHOT_TIMEOUT_MS = 15_000L
 
     private val _active = MutableStateFlow(false)
@@ -186,9 +188,10 @@ object LiveVisionController {
      * 不影响结构树帧的产出（与 ScreenshotBuiltin 同一降级模式）。
      */
     private suspend fun captureScreenshotPath(): String? = withContext(Dispatchers.IO) {
-        val context = runCatching {
-            com.niki914.xposed.api.util.ContextProvider.await().applicationContext
-        }.getOrNull() ?: return@withContext null
+        // A5：await(runCatching) 只兜异常不兜超时 —— provide 永不到时仍会永久挂起。
+        // 改为带超时的等待，拿不到 Context 就放弃像素截屏（结构树帧照常产出）。
+        val context = com.niki914.xposed.api.util.ContextProvider.await(CONTEXT_WAIT_TIMEOUT_MS)
+            ?: return@withContext null
         val cacheDir = File(context.cacheDir, "live_vision").apply { mkdirs() }
         // 清理上一帧，避免缓存目录无限增长
         cacheDir.listFiles()?.forEach { runCatching { it.delete() } }

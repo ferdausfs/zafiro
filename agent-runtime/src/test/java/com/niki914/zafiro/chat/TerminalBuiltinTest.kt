@@ -225,6 +225,17 @@ class TerminalBuiltinTest {
                     json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content
                         .contains("1s")
                 )
+                // A2: timed-out command keeps its session readable — the timeout
+                // response carries the session_id and the read/close instructions.
+                val sessionId = json["session_id"]!!.jsonPrimitive.content
+                assertEquals("a0a1", sessionId)
+                assertTrue(
+                    json["error"]!!.jsonObject["message"]!!.jsonPrimitive.content
+                        .contains("action=\"read\"")
+                )
+                // The session must still be alive in the pool (promoted, not closed).
+                assertTrue(TerminalSessionPool.get("a0a1") != null)
+                TerminalSessionPool.close("a0a1")
             }
         }
     }
