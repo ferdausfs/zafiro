@@ -1,12 +1,15 @@
 package com.niki914.uikit.infra
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -17,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.CompositingStrategy
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
@@ -33,6 +37,7 @@ import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.Shadow
 import com.niki914.uikit.base.LocalAppDarkTheme
+import com.niki914.uikit.base.MotionTheme
 import com.niki914.uikit.infra.interaction.ActionBarButtonInteractiveStyle
 import com.niki914.uikit.infra.interaction.InteractiveHighlight
 import com.niki914.uikit.infra.interaction.applyLiquidInteractiveTransform
@@ -61,8 +66,21 @@ fun ActionBarButton(
     val interactionSource = remember { MutableInteractionSource() }
     val buttonShape = RoundedCornerShape(56.dp)
 
+    // UI polish：按压缩放（~0.97），与内建 lens 高光/内阴影叠加；发送按钮等
+    // 所有 ActionBarButton 触感统一。
+    val pressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (pressed) MotionTheme.PRESS_SCALE else 1f,
+        animationSpec = MotionTheme.pressSpring(),
+        label = "actionBarPressScale",
+    )
+
     Box(
         modifier = modifier
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+            }
             .padding(horizontal = 12.dp, vertical = 12.dp)
             .requiredSize(with(density) { 48.sp.toDp() })
             .drawBackdrop(

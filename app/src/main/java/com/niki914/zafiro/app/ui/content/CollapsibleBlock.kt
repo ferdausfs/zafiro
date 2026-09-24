@@ -2,10 +2,15 @@ package com.niki914.zafiro.app.ui.content
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -42,6 +47,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.niki914.uikit.base.MotionTheme
 import com.niki914.uikit.infra.shape.G2FieldShape
 
 // ── 块 UI 密度参数表（折叠块 + 命令型工具正文 + turn 分隔共用）────────────────
@@ -171,6 +177,23 @@ fun CollapsibleBlock(
         label = "headerInset",
     )
 
+    // UI polish：运行中尾部圆底呼吸脉冲（alpha 0.12 ↔ 0.30，反向循环），
+    // 与 LoadingIndicator 一起给「正在执行」双通道反馈；非运行态回落静态 alpha。
+    val pulseTransition = rememberInfiniteTransition(label = "toolRunningPulse")
+    val trailingDotAlpha by if (isRunning) {
+        pulseTransition.animateFloat(
+            initialValue = 0.12f,
+            targetValue = 0.30f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = MotionTheme.DURATION_MEDIUM * 4, easing = MotionTheme.EasingStandard),
+                repeatMode = RepeatMode.Reverse,
+            ),
+            label = "trailingDotAlpha",
+        )
+    } else {
+        remember { androidx.compose.runtime.mutableFloatStateOf(0.12f) }
+    }
+
     val shape = remember(radiusDp) { G2FieldShape(radiusDp) }
     val surface = containerColor
 
@@ -224,7 +247,7 @@ fun CollapsibleBlock(
             } else Box(
                 modifier = Modifier
                     .size(BlockIconDot)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), CircleShape),
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = trailingDotAlpha), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 if (isRunning) {

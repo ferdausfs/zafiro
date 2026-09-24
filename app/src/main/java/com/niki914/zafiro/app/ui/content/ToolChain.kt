@@ -54,6 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import com.niki914.uikit.base.rememberHaptics
 import com.niki914.uikit.infra.shape.G2FieldShape
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.ui.model.HomeChatImage
@@ -114,6 +115,29 @@ fun ToolChain(
     /** 展开内容（工具结果）点击回调；null 时不拦截点击（head 仍只管展开/收起）。 */
     onContentClick: (() -> Unit)? = null,
 ) {
+    // UI polish：工具状态迁移触感 —— Running → Succeeded 轻确认、
+    // Running → Failed 拒绝反馈。失败优先于成功（同批多工具时以失败为准）。
+    val haptics = rememberHaptics()
+    var lastStates by remember { mutableStateOf<List<HomeToolState>?>(null) }
+    LaunchedEffect(tools.map { it.state }) {
+        val states = tools.map { it.state }
+        val previous = lastStates
+        if (previous != null) {
+            val transitions = states.zip(previous) { now, before -> before to now }
+            val anyFailed = transitions.any { (before, now) ->
+                before == HomeToolState.Running && now == HomeToolState.Failed
+            }
+            val anySucceeded = transitions.any { (before, now) ->
+                before == HomeToolState.Running && now == HomeToolState.Succeeded
+            }
+            when {
+                anyFailed -> haptics.failure()
+                anySucceeded -> haptics.success()
+            }
+        }
+        lastStates = states
+    }
+
     if (tools.size == 1) {
         val status = tools[0]
         SingleToolRow(

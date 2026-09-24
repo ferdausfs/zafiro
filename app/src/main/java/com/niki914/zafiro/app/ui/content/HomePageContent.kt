@@ -84,6 +84,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.niki914.store.XIpcBridge
 import com.niki914.uikit.base.BaseTheme
+import com.niki914.uikit.base.MotionTheme
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.LiquidDialog
 import com.niki914.uikit.infra.LocalLiquidViewportAvoidanceController
@@ -624,7 +625,13 @@ private fun HomePageContentBody(
                     activeThinkingKey = activeThinkingKey,
                     onToggleActionRow = onToggleActionRow,
                     isGenerating = uiState.isGenerating,
-                    modifier = turnTopPad.fillMaxWidth(),
+                    // UI polish：消息平滑入场/重排（key 已稳定 = turn.id）。
+                    // placement 弹簧统一取 MotionTheme；fade 保持默认。
+                    modifier = turnTopPad
+                        .animateItem(
+                            placementSpec = MotionTheme.standardSpring(),
+                        )
+                        .fillMaxWidth(),
                 )
             }
             item(key = "bottom_anchor") {
