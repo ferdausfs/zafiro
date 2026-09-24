@@ -25,6 +25,7 @@ import com.niki914.zafiro.repo.AutomationTriggerSource
 import com.niki914.zafiro.repo.XRepo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,6 +67,8 @@ object AutomationHub {
     private const val AGENT_TURN_TIMEOUT_MS = 5 * 60 * 1000L
     private const val BUSY_WAIT_ATTEMPTS = 15
     private const val BUSY_WAIT_INTERVAL_MS = 4_000L
+    /** C1：队列容量上限（DROP_OLDEST 满时丢最旧，保留最新事件）。 */
+    private const val QUEUE_CAPACITY = 32
     // v1.7.0
     private const val TIME_TICK_INTERVAL_MS = 30_000L
     private const val FULL_BATTERY_PERCENT = 95
@@ -86,7 +89,14 @@ object AutomationHub {
 
     private data class BatteryState(val level: Int, val charging: Boolean)
 
-    private val queue = Channel<TriggerHit>(Channel.UNLIMITED)
+    /**
+     * C1：有界队列（容量 [QUEUE_CAPACITY]）+ 明确丢弃策略 DROP_OLDEST。
+     * 此前 Channel.UNLIMITED：consumer 单协程串行消费（AGENT 事件一次可占
+     * 1-6 分钟：waitUntilAgentFree 最多 60s + withTimeout 5min），触发风暴下
+     * 队列无界增长直到 OOM。DROP_OLDEST 保证最新事件优先存活 —— 旧事件的
+     * 上下文（如电池电量、通知内容）在队头积压过久已失效，丢旧合理。
+     */
+    private val queue = Channel<TriggerHit>(QUEUE_CAPACITY, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private val lastFiredAtMs = HashMap<String, Long>()
     private var alertNotificationId = ALERT_NOTIFICATION_ID_BASE
 
@@ -108,9 +118,11 @@ object AutomationHub {
 
     fun init(context: Context, applicationScope: CoroutineScope) {
         if (appContext != null) return
-        appContext = context.applicationContext
+        val appCtx = context.applicationContext
+        appContext = appCtx
         scope = applicationScope
-        ensureChannels(appContext!!)
+        // B：!! → 局部 val（避免对可变字段二次解引用）
+        ensureChannels(appCtx)
 
         consumerJob = applicationScope.launch {
             for (hit in queue) {
@@ -126,26 +138,31 @@ object AutomationHub {
 
     /** 重新加载触发器（UI 增删改后调用）；同时维护 DownloadObserver。 */
     fun reloadTriggers() {
-        val ctx = appContext ?: return
         val sc = scope ?: return
         sc.launch {
             try {
-                val triggers = XRepo.automation.list()
-                _triggers.value = triggers
-                _armedTriggerCount.value = triggers.count { it.enabled }
-                syncDownloadObserver(ctx, triggers)
-                syncBatteryReceiver(ctx, triggers)
-                syncPowerSaveReceiver(ctx, triggers)
-                syncTimeTicker(triggers)
-                syncLocationWatch(ctx, triggers)
-                Logger.d(
-                    LOG_TAG,
-                    "reloadTriggers total=${triggers.size} armed=${_armedTriggerCount.value}"
-                )
+                reloadTriggersNow()
             } catch (t: Throwable) {
                 Logger.w(LOG_TAG, "reloadTriggers failed reason=${t.message}")
             }
         }
+    }
+
+    /** 同步加载触发器并维护各事件源（挂起；供 [onServiceStarted] armed 前调用）。 */
+    private suspend fun reloadTriggersNow() {
+        val ctx = appContext ?: return
+        val triggers = XRepo.automation.list()
+        _triggers.value = triggers
+        _armedTriggerCount.value = triggers.count { it.enabled }
+        syncDownloadObserver(ctx, triggers)
+        syncBatteryReceiver(ctx, triggers)
+        syncPowerSaveReceiver(ctx, triggers)
+        syncTimeTicker(triggers)
+        syncLocationWatch(ctx, triggers)
+        Logger.d(
+            LOG_TAG,
+            "reloadTriggers total=${triggers.size} armed=${_armedTriggerCount.value}"
+        )
     }
 
     private fun syncDownloadObserver(context: Context, triggers: List<AutomationTrigger>) {
@@ -153,10 +170,18 @@ object AutomationHub {
             it.enabled && it.source == AutomationTriggerSource.FILE_DOWNLOAD
         }
         if (needFileWatch && downloadObserver == null) {
-            downloadObserver = DownloadObserver(context) { path ->
+            val observer = DownloadObserver(context) { path ->
                 onFileCreated(path)
-            }.also { it.start() }
-            Logger.i(LOG_TAG, "DownloadObserver started")
+            }
+            // C2：start() 返回实际结果 —— Download 目录缺失时不再让 Hub 持有
+            // 一个从未真正 watch 的 observer（此前会一直 believed-running，
+            // 且目录恢复后也不会重试）；置 null 让下次 reloadTriggers 重试。
+            if (observer.start()) {
+                downloadObserver = observer
+                Logger.i(LOG_TAG, "DownloadObserver started")
+            } else {
+                Logger.w(LOG_TAG, "DownloadObserver start failed (download dir missing), will retry on next reload")
+            }
         } else if (!needFileWatch && downloadObserver != null) {
             downloadObserver?.stop()
             downloadObserver = null
@@ -191,7 +216,11 @@ object AutomationHub {
             batteryReceiver = receiver
             Logger.i(LOG_TAG, "battery receiver registered")
         } else if (!needBattery && batteryReceiver != null) {
-            runCatching { context.unregisterReceiver(batteryReceiver!!) }
+            // B：!! → ?.let。并发 reloadTriggers 可能已把 receiver 置空，
+            // 判空后二次解引用会 NPE。
+            batteryReceiver?.let { receiver ->
+                runCatching { context.unregisterReceiver(receiver) }
+            }
             batteryReceiver = null
             lastBatteryState = null
             Logger.i(LOG_TAG, "battery receiver unregistered")
@@ -226,7 +255,10 @@ object AutomationHub {
             powerSaveReceiver = receiver
             Logger.i(LOG_TAG, "power-save receiver registered (initial=$lastPowerSaveState)")
         } else if (!needPowerSave && powerSaveReceiver != null) {
-            runCatching { context.unregisterReceiver(powerSaveReceiver!!) }
+            // B：!! → ?.let（同 batteryReceiver，防并发 reload 竞态 NPE）
+            powerSaveReceiver?.let { receiver ->
+                runCatching { context.unregisterReceiver(receiver) }
+            }
             powerSaveReceiver = null
             lastPowerSaveState = null
             Logger.i(LOG_TAG, "power-save receiver unregistered")
@@ -295,7 +327,8 @@ object AutomationHub {
             }} trigger(s)")
             Logger.i(LOG_TAG, "location watch started")
         } else if (!needLocation && locationListener != null) {
-            runCatching { lm?.removeUpdates(locationListener!!) }
+            // B：!! → ?.let（防并发 reload 竞态 NPE）
+            locationListener?.let { listener -> lm?.removeUpdates(listener) }
             locationListener = null
             locationInsideState.clear()
             Logger.i(LOG_TAG, "location watch stopped")
@@ -509,9 +542,28 @@ object AutomationHub {
     }
 
     fun onServiceStarted() {
-        _serviceRunning.value = true
-        reloadTriggers()
-        appendLog("[service] proactive mode ON")
+        // C1：armed 时机后移 —— 等首次触发器加载完成再置 _serviceRunning=true。
+        // 此前立刻置 true 而触发器列表仍为空，服务启动瞬间到达的事件全部
+        // 匹配不到触发器（matchNotificationTrigger 对空列表恒 null）→ 静默丢失。
+        // 先加载再 armed：加载窗口内事件照旧走 "service 未运行" 门（事件源如
+        // 通知本来就是瞬态的、无法回放），但 armed 后不再有空列表丢失窗口。
+        val sc = scope
+        if (sc == null) {
+            _serviceRunning.value = true
+            appendLog("[service] proactive mode ON (no scope, armed immediately)")
+            return
+        }
+        sc.launch {
+            val loaded = try {
+                reloadTriggersNow()
+                true
+            } catch (t: Throwable) {
+                Logger.w(LOG_TAG, "arm-time trigger load failed reason=${t.message}")
+                false
+            }
+            _serviceRunning.value = true
+            appendLog("[service] proactive mode ON${if (loaded) "" else " (trigger load failed)"}")
+        }
     }
 
     fun onServiceStopped() {
@@ -556,10 +608,9 @@ object AutomationHub {
         }
         lastFiredAtMs[hit.trigger.id] = now
         appendLog("[hit] ${hit.trigger.name} <- ${hit.appLabel.ifBlank { hit.packageName }}")
-        val accepted = queue.trySend(hit).isSuccess
-        if (!accepted) {
-            Logger.w(LOG_TAG, "queue full, dropped trigger=${hit.trigger.id}")
-        }
+        // C1：DROP_OLDEST 策略下 trySend 恒成功（满时内部丢最旧）；不再有
+        // 「记了冷却但事件被丢」的死分支 —— 冷却记录与入队结果始终一致。
+        queue.trySend(hit)
     }
 
     // ------------------------------------------------------------ execution
