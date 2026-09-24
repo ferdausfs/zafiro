@@ -572,6 +572,63 @@ object AutomationHub {
         Logger.i(LOG_TAG, "listener disconnected")
     }
 
+    /** 活跃通知快照保留上限（进程内小存库，防长通知栏场景内存膨胀）。 */
+    private const val SNAPSHOT_STORE_LIMIT = 64
+    /** 重连回放窗口：只回放窗口内新到的通知，老通知视为已处理（防重启后重复触发）。 */
+    private const val SNAPSHOT_REPLAY_WINDOW_MS = 5 * 60 * 1000L
+
+    /** 重连回放期间已入队的通知 key（防同一快照在多次 connect 间重复入队）。 */
+    private val replayedSnapshotKeys = java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap<String, Boolean>())
+
+    @Volatile
+    private var lastListenerSnapshot: List<NotificationSnapshot> = emptyList()
+
+    /**
+     * Phase 2（item 5）：监听服务重连/冷启时的活跃通知快照回放。
+     *
+     * 目的：监听器被系统断开/进程死亡期间新到的通知，只要此刻仍在通知栏，
+     * 就在这里补一轮匹配 —— 不因服务重启而丢事件。策略：
+     *  - 只回放 [SNAPSHOT_REPLAY_WINDOW_MS] 内 postTime 的通知（老通知视为
+     *    上个进程已处理过，避免每次重启都重复触发）;
+     *  - 通知 key 进程内去重（同一条通知多次 connect 只回放一次）；
+     *  - 既有冷却照常生效（短时间 rebind 的重复投递由冷却挡住）。
+     *
+     * 诚实边界：断连窗口内「到达且已被用户划走」的通知系统不留底，无法回放。
+     */
+    fun onListenerSnapshot(snapshots: List<NotificationSnapshot>) {
+        lastListenerSnapshot = snapshots.takeLast(SNAPSHOT_STORE_LIMIT)
+        val ctx = appContext ?: return
+        if (!_serviceRunning.value) return
+        val cutoff = System.currentTimeMillis() - SNAPSHOT_REPLAY_WINDOW_MS
+        var replayed = 0
+        for (snap in snapshots) {
+            if (snap.postTime < cutoff) continue
+            if (!replayedSnapshotKeys.add(snap.key)) continue
+            val trigger = matchNotificationTrigger(snap.packageName, snap.title, snap.text) ?: continue
+            if (isCooldownActive(trigger)) {
+                // 冷却挡住不入队时也别记 key：同一条通知在本窗口内的后续重试仍有机会
+                replayedSnapshotKeys.remove(snap.key)
+                continue
+            }
+            if (replayedSnapshotKeys.size > SNAPSHOT_STORE_LIMIT * 4) replayedSnapshotKeys.clear()
+            enqueue(
+                TriggerHit(
+                    trigger = trigger,
+                    packageName = snap.packageName,
+                    appLabel = appLabelOf(ctx, snap.packageName),
+                    title = snap.title,
+                    text = snap.text,
+                    extra = "replayed from listener snapshot (postTime=${snap.postTime})",
+                )
+            )
+            replayed++
+        }
+        if (replayed > 0) {
+            appendLog("[listener] replayed $replayed notification(s) after reconnect")
+            Logger.i(LOG_TAG, "snapshot replay hits=$replayed snapshotSize=${snapshots.size}")
+        }
+    }
+
     /** DownloadObserver 回调：Download 目录出现新文件。 */
     fun onFileCreated(filePath: String) {
         if (!_serviceRunning.value) return
