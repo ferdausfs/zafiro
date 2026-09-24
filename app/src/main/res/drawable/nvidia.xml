@@ -1,0 +1,16 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- NVIDIA NIM: brand green tile + white N -->
+    <path
+        android:fillColor="#FF76B900"
+        android:pathData="M5,2.2 L19,2.2 A2.8,2.8 0 0 1 21.8,5 L21.8,19 A2.8,2.8 0 0 1 19,21.8 L5,21.8 A2.8,2.8 0 0 1 2.2,19 L2.2,5 A2.8,2.8 0 0 1 5,2.2 Z" />
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2.3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M7.4,17.6 L7.4,6.4 M7.4,6.4 L16.6,17.6 M16.6,17.6 L16.6,6.4" />
+</vector>

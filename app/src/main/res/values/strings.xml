@@ -540,6 +540,9 @@
     <string name="ui_settings_import_save">保存并启用</string>
     <string name="ui_settings_import_show">显示</string>
     <string name="ui_settings_import_hide">隐藏</string>
+    <string name="ui_provider_custom_title">自定义 Provider</string>
+    <string name="ui_provider_custom_add_title">添加自定义 Provider</string>
+    <string name="ui_provider_custom_hint">任何 OpenAI 兼容接口：填入 https://host/v1 形式的接入地址即可，会自动补全 /chat/completions。</string>
 
     <!-- v1.5.0 模型回退（Feature: Intelligent Model Fallback） -->
     <string name="ui_settings_fallback_title">模型回退</string>

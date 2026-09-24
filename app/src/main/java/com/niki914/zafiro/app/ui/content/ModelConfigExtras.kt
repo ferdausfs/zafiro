@@ -223,6 +223,130 @@ private fun LabeledTextField(
 }
 
 /**
+ * 自定义 Provider 手动添加对话框（Feature: Universal Custom Providers）：
+ * 跳过脚本粘贴，直接填 name / base URL / model / key — 任何 OpenAI 兼容
+ * /v1/chat/completions 端点填入 base URL 即可使用。保存逻辑与脚本导入共用
+ * （key 入 TokenVault，保存后自动创建并激活 vault-backed SavedLlmConfig）。
+ */
+@Composable
+fun CustomProviderEntryDialog(
+    onDismiss: () -> Unit,
+) {
+    val viewModel = pageViewModel<ProviderImportViewModel>(key = "provider-custom")
+    val state by viewModel.uiStateFlow.collectAsState()
+
+    androidx.compose.runtime.LaunchedEffect(viewModel) {
+        viewModel.sendIntent(ProviderImportIntent.ShowManual)
+    }
+
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.ui_provider_custom_add_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = stringResource(R.string.ui_provider_custom_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                LabeledTextField(
+                    label = stringResource(R.string.ui_settings_import_name_label),
+                    value = state.nameInput,
+                    onValueChange = { viewModel.sendIntent(ProviderImportIntent.UpdateName(it)) },
+                    singleLine = true,
+                )
+                LabeledTextField(
+                    label = stringResource(R.string.ui_settings_import_base_url_label),
+                    value = state.baseUrlInput,
+                    onValueChange = { viewModel.sendIntent(ProviderImportIntent.UpdateBaseUrl(it)) },
+                    singleLine = true,
+                )
+                LabeledTextField(
+                    label = stringResource(R.string.ui_settings_import_model_label),
+                    value = state.modelInput,
+                    onValueChange = { viewModel.sendIntent(ProviderImportIntent.UpdateModel(it)) },
+                    singleLine = true,
+                )
+                LabeledTextField(
+                    label = stringResource(R.string.ui_settings_import_api_key_label),
+                    value = state.apiKeyInput,
+                    onValueChange = { viewModel.sendIntent(ProviderImportIntent.UpdateApiKey(it)) },
+                    singleLine = true,
+                    visualTransformation = if (state.apiKeyVisible) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    },
+                    keyboardType = KeyboardType.Password,
+                    trailing = {
+                        androidx.compose.material3.TextButton(
+                            onClick = { viewModel.sendIntent(ProviderImportIntent.ToggleApiKeyVisibility) },
+                        ) {
+                            Text(
+                                stringResource(
+                                    if (state.apiKeyVisible) {
+                                        R.string.ui_settings_import_hide
+                                    } else {
+                                        R.string.ui_settings_import_show
+                                    }
+                                )
+                            )
+                        }
+                    },
+                )
+
+                state.error?.let { error ->
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    androidx.compose.material3.TextButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.dialog_cancel))
+                    }
+                    androidx.compose.material3.Button(
+                        onClick = { viewModel.sendIntent(ProviderImportIntent.Save) },
+                        enabled = !state.isSaving,
+                    ) {
+                        Text(stringResource(R.string.ui_settings_import_save))
+                    }
+                }
+            }
+        }
+    }
+
+    // 保存成功后 state.visible 复位为 false → 同步关闭对话框。
+    // dialogWasVisible 防止首帧 visible=false 时立即回调 onDismiss。
+    var entryDialogWasVisible by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(state.visible) {
+        if (state.visible) {
+            entryDialogWasVisible = true
+        } else if (entryDialogWasVisible) {
+            onDismiss()
+        }
+    }
+}
+
+/**
  * 模型回退链配置对话框（Feature: Intelligent Model Fallback）：
  * 启用开关 + 有序链（上移/下移/移除）+ 剩余配置添加。改动即时持久化。
  */

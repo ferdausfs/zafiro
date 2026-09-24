@@ -541,6 +541,9 @@
     <string name="ui_settings_import_save">Save &amp; activate</string>
     <string name="ui_settings_import_show">Show</string>
     <string name="ui_settings_import_hide">Hide</string>
+    <string name="ui_provider_custom_title">Custom provider</string>
+    <string name="ui_provider_custom_add_title">Add custom provider</string>
+    <string name="ui_provider_custom_hint">Any OpenAI-compatible API works: enter a base URL like https://host/v1 — /chat/completions is appended automatically.</string>
 
     <!-- v1.5.0 Model fallback (Feature: Intelligent Model Fallback) -->
     <string name="ui_settings_fallback_title">Model fallback</string>

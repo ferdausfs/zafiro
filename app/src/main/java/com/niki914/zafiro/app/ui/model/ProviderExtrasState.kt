@@ -33,6 +33,9 @@ data class ProviderImportUiState(
 
 sealed interface ProviderImportIntent {
     data object Show : ProviderImportIntent
+
+    /** 手动添加自定义 Provider：跳过脚本粘贴，直接展开表单。 */
+    data object ShowManual : ProviderImportIntent
     data object Dismiss : ProviderImportIntent
     data class UpdateInput(val value: String) : ProviderImportIntent
     data object Parse : ProviderImportIntent
@@ -56,6 +59,9 @@ class ProviderImportViewModel : ComposeMVIViewModel<ProviderImportIntent, Provid
     override suspend fun handleIntent(intent: ProviderImportIntent) {
         when (intent) {
             ProviderImportIntent.Show -> updateState { copy(visible = true, error = null) }
+            ProviderImportIntent.ShowManual -> updateState {
+                copy(visible = true, parsed = true, error = null)
+            }
             ProviderImportIntent.Dismiss -> updateState {
                 ProviderImportUiState(customProviders = customProviders)
             }

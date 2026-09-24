@@ -40,9 +40,16 @@ object ProviderSpecs {
     val all: List<ProviderSpec> = listOf(
         AnthropicSpec,
         OpenAiSpec,
+        NvidiaSpec,
         OpenRouterSpec,
         DeepSeekSpec,
         GoogleSpec,
+        GroqSpec,
+        MistralSpec,
+        XaiSpec,
+        TogetherSpec,
+        FireworksSpec,
+        CerebrasSpec,
         KimiSpec,
         BailianSpec,
         SiliconFlowSpec,
@@ -56,12 +63,147 @@ object ProviderSpecs {
     }
 }
 
+private data object NvidiaSpec : ProviderSpec {
+    override val id: String = "nvidia"
+    override val brandName: String = "NVIDIA NIM"
+
+    // NVIDIA NIM（build.nvidia.com）官方 OpenAI 兼容端点；自建 NIM / 镜像通过自定义 base URL 接入
+    override val officialEndpoint: String = "https://integrate.api.nvidia.com/v1/chat/completions"
+    override val exampleModelId: String = "meta/llama-3.3-70b-instruct"
+    override val allowsCustomEndpointInNewConfig: Boolean = true
+    override val defaultProtocol: String = "openai-chat-completions"
+    override val iconRes: Int = R.drawable.nvidia
+    override val tintIcon: Boolean = false
+    override val visualTokens: ProviderVisualTokens = ProviderVisualTokens(
+        button = ProviderButtonTokens(
+            darkContainerColorRes = R.color.provider_nvidia_button_dark_container,
+            lightContainerColorRes = R.color.provider_nvidia_button_light_container,
+            darkContentColorRes = R.color.provider_nvidia_button_dark_content,
+            lightContentColorRes = R.color.provider_nvidia_button_light_content,
+        ),
+    )
+}
+
+private data object GroqSpec : ProviderSpec {
+    override val id: String = "groq"
+    override val brandName: String = "Groq"
+    override val officialEndpoint: String = "https://api.groq.com/openai/v1/chat/completions"
+    override val exampleModelId: String = "llama-3.3-70b-versatile"
+    override val allowsCustomEndpointInNewConfig: Boolean = true
+    override val defaultProtocol: String = "openai-chat-completions"
+    override val iconRes: Int = R.drawable.groq
+    override val tintIcon: Boolean = false
+    override val visualTokens: ProviderVisualTokens = ProviderVisualTokens(
+        button = ProviderButtonTokens(
+            darkContainerColorRes = R.color.provider_groq_button_dark_container,
+            lightContainerColorRes = R.color.provider_groq_button_light_container,
+            darkContentColorRes = R.color.provider_groq_button_dark_content,
+            lightContentColorRes = R.color.provider_groq_button_light_content,
+        ),
+    )
+}
+
+private data object MistralSpec : ProviderSpec {
+    override val id: String = "mistral"
+    override val brandName: String = "Mistral"
+    override val officialEndpoint: String = "https://api.mistral.ai/v1/chat/completions"
+    override val exampleModelId: String = "mistral-large-latest"
+    override val allowsCustomEndpointInNewConfig: Boolean = true
+    override val defaultProtocol: String = "openai-chat-completions"
+    override val iconRes: Int = R.drawable.mistral
+    override val tintIcon: Boolean = false
+    override val visualTokens: ProviderVisualTokens = ProviderVisualTokens(
+        button = ProviderButtonTokens(
+            darkContainerColorRes = R.color.provider_mistral_button_dark_container,
+            lightContainerColorRes = R.color.provider_mistral_button_light_container,
+            darkContentColorRes = R.color.provider_mistral_button_dark_content,
+            lightContentColorRes = R.color.provider_mistral_button_light_content,
+        ),
+    )
+}
+
+private data object XaiSpec : ProviderSpec {
+    override val id: String = "xai"
+    override val brandName: String = "xAI Grok"
+    override val officialEndpoint: String = "https://api.x.ai/v1/chat/completions"
+    override val exampleModelId: String = "grok-4"
+    override val allowsCustomEndpointInNewConfig: Boolean = true
+    override val defaultProtocol: String = "openai-chat-completions"
+    override val iconRes: Int = R.drawable.xai
+    override val tintIcon: Boolean = false
+    override val visualTokens: ProviderVisualTokens = ProviderVisualTokens(
+        button = ProviderButtonTokens(
+            darkContainerColorRes = R.color.provider_xai_button_dark_container,
+            lightContainerColorRes = R.color.provider_xai_button_light_container,
+            darkContentColorRes = R.color.provider_xai_button_dark_content,
+            lightContentColorRes = R.color.provider_xai_button_light_content,
+        ),
+    )
+}
+
+private data object TogetherSpec : ProviderSpec {
+    override val id: String = "together"
+    override val brandName: String = "Together AI"
+    override val officialEndpoint: String = "https://api.together.xyz/v1/chat/completions"
+    override val exampleModelId: String = "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+    override val allowsCustomEndpointInNewConfig: Boolean = true
+    override val defaultProtocol: String = "openai-chat-completions"
+    override val iconRes: Int = R.drawable.together
+    override val tintIcon: Boolean = false
+    override val visualTokens: ProviderVisualTokens = ProviderVisualTokens(
+        button = ProviderButtonTokens(
+            darkContainerColorRes = R.color.provider_together_button_dark_container,
+            lightContainerColorRes = R.color.provider_together_button_light_container,
+            darkContentColorRes = R.color.provider_together_button_dark_content,
+            lightContentColorRes = R.color.provider_together_button_light_content,
+        ),
+    )
+}
+
+private data object FireworksSpec : ProviderSpec {
+    override val id: String = "fireworks"
+    override val brandName: String = "Fireworks AI"
+    override val officialEndpoint: String = "https://api.fireworks.ai/inference/v1/chat/completions"
+    override val exampleModelId: String = "accounts/fireworks/models/llama-v3p3-70b-instruct"
+    override val allowsCustomEndpointInNewConfig: Boolean = true
+    override val defaultProtocol: String = "openai-chat-completions"
+    override val iconRes: Int = R.drawable.fireworks
+    override val tintIcon: Boolean = false
+    override val visualTokens: ProviderVisualTokens = ProviderVisualTokens(
+        button = ProviderButtonTokens(
+            darkContainerColorRes = R.color.provider_fireworks_button_dark_container,
+            lightContainerColorRes = R.color.provider_fireworks_button_light_container,
+            darkContentColorRes = R.color.provider_fireworks_button_dark_content,
+            lightContentColorRes = R.color.provider_fireworks_button_light_content,
+        ),
+    )
+}
+
+private data object CerebrasSpec : ProviderSpec {
+    override val id: String = "cerebras"
+    override val brandName: String = "Cerebras"
+    override val officialEndpoint: String = "https://api.cerebras.ai/v1/chat/completions"
+    override val exampleModelId: String = "llama-3.3-70b"
+    override val allowsCustomEndpointInNewConfig: Boolean = true
+    override val defaultProtocol: String = "openai-chat-completions"
+    override val iconRes: Int = R.drawable.cerebras
+    override val tintIcon: Boolean = false
+    override val visualTokens: ProviderVisualTokens = ProviderVisualTokens(
+        button = ProviderButtonTokens(
+            darkContainerColorRes = R.color.provider_cerebras_button_dark_container,
+            lightContainerColorRes = R.color.provider_cerebras_button_light_container,
+            darkContentColorRes = R.color.provider_cerebras_button_dark_content,
+            lightContentColorRes = R.color.provider_cerebras_button_light_content,
+        ),
+    )
+}
+
 private data object DeepSeekSpec : ProviderSpec {
     override val id: String = "deepseek"
     override val brandName: String = "DeepSeek"
     override val officialEndpoint: String = "https://api.deepseek.com/responses"
     override val exampleModelId: String = "deepseek-v4-pro"
-    override val allowsCustomEndpointInNewConfig: Boolean = false
+    override val allowsCustomEndpointInNewConfig: Boolean = true
 
     // DeepSeek 官方 /responses 网关兼容 OpenAI Responses 协议（实测可用，2026-02）
     override val defaultProtocol: String = "openai-responses"
@@ -137,7 +279,7 @@ private data object BailianSpec : ProviderSpec {
     override val brandName: String = "阿里百炼"
     override val officialEndpoint: String = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
     override val exampleModelId: String = "qwen-max"
-    override val allowsCustomEndpointInNewConfig: Boolean = false
+    override val allowsCustomEndpointInNewConfig: Boolean = true
     override val defaultProtocol: String = "openai-chat-completions"
     override val iconRes: Int = R.drawable.bailian
     override val tintIcon: Boolean = false
@@ -151,7 +293,7 @@ private data object KimiSpec : ProviderSpec {
     override val brandName: String = "Kimi"
     override val officialEndpoint: String = "https://api.moonshot.cn/v1/chat/completions"
     override val exampleModelId: String = "kimi-latest"
-    override val allowsCustomEndpointInNewConfig: Boolean = false
+    override val allowsCustomEndpointInNewConfig: Boolean = true
     override val defaultProtocol: String = "openai-chat-completions"
     override val iconRes: Int = R.drawable.kimi
     override val tintIcon: Boolean = false
@@ -165,7 +307,7 @@ private data object SiliconFlowSpec : ProviderSpec {
     override val brandName: String = "硅基流动"
     override val officialEndpoint: String = "https://api.siliconflow.cn/v1/chat/completions"
     override val exampleModelId: String = "Qwen3-72B"
-    override val allowsCustomEndpointInNewConfig: Boolean = false
+    override val allowsCustomEndpointInNewConfig: Boolean = true
     override val defaultProtocol: String = "openai-chat-completions"
     override val iconRes: Int = R.drawable.siliconflow
     override val tintIcon: Boolean = true
@@ -184,7 +326,7 @@ private data object OpenRouterSpec : ProviderSpec {
     override val brandName: String = "OpenRouter"
     override val officialEndpoint: String = "https://openrouter.ai/api/v1/chat/completions"
     override val exampleModelId: String = "auto"
-    override val allowsCustomEndpointInNewConfig: Boolean = false
+    override val allowsCustomEndpointInNewConfig: Boolean = true
     override val defaultProtocol: String = "openai-chat-completions"
     override val iconRes: Int = R.drawable.openrouter
     override val tintIcon: Boolean = true
@@ -205,7 +347,7 @@ private data object CommandCodeSpec : ProviderSpec {
     override val brandName: String = "Command Code"
     override val officialEndpoint: String = "https://api.commandcode.ai/provider/v1/chat/completions"
     override val exampleModelId: String = "z-ai/glm-5.3-flash"
-    override val allowsCustomEndpointInNewConfig: Boolean = false
+    override val allowsCustomEndpointInNewConfig: Boolean = true
     override val defaultProtocol: String = "openai-chat-completions"
     override val iconRes: Int = R.drawable.command_code
     override val tintIcon: Boolean = true
@@ -224,7 +366,7 @@ private data object OpenCodeSpec : ProviderSpec {
     override val brandName: String = "OpenCode"
     override val officialEndpoint: String = "https://opencode.ai/zen/go/v1/chat/completions"
     override val exampleModelId: String = "deepseek-v4-flash"
-    override val allowsCustomEndpointInNewConfig: Boolean = false
+    override val allowsCustomEndpointInNewConfig: Boolean = true
     override val defaultProtocol: String = "openai-chat-completions"
     override val iconRes: Int = R.drawable.opencode
     override val tintIcon: Boolean = true
