@@ -630,4 +630,12 @@
     <string name="automation_battery_prompt_body">La optimización de batería puede suspender a Zafiro en segundo plano y romper los disparadores de hora y notificación. Considera añadir Zafiro a la lista blanca de optimización de batería.</string>
     <string name="automation_battery_prompt_allow">Abrir ajustes</string>
     <string name="automation_battery_prompt_dismiss">No volver a preguntar</string>
+    <!-- Phase 2: cabecera de estado / registro de actividad -->
+    <string name="automation_status_service_on">Modo proactivo en ejecución</string>
+    <string name="automation_status_service_off">Modo proactivo detenido</string>
+    <string name="automation_status_listener_ok">Oyente de notificaciones conectado</string>
+    <string name="automation_status_listener_lost">Oyente de notificaciones desconectado</string>
+    <string name="automation_status_kills">Suspendido por el sistema %1$d veces en 24 h: completa la exención de batería</string>
+    <string name="automation_activity_title">Actividad reciente</string>
+    <string name="automation_empty_hint_body">Toca + para crear un disparador y que Zafiro se active por horario, notificación, batería o ubicación.</string>
 </resources>

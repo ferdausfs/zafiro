@@ -629,4 +629,12 @@
     <string name="automation_battery_prompt_body">バッテリー最適化によって Zafiro がバックグラウンドでスリープされ、時刻・通知トリガーが失効することがあります。許可リストへの追加を推奨します。</string>
     <string name="automation_battery_prompt_allow">設定を開く</string>
     <string name="automation_battery_prompt_dismiss">次回表示しない</string>
+    <!-- Phase 2: ステータスヘッダー / アクティビティログ -->
+    <string name="automation_status_service_on">プロアクティブモード実行中</string>
+    <string name="automation_status_service_off">プロアクティブモード停止中</string>
+    <string name="automation_status_listener_ok">通知リスナー接続済み</string>
+    <string name="automation_status_listener_lost">通知リスナー未接続</string>
+    <string name="automation_status_kills">24 時間間に %1$d 回スリープされました。バッテリー許可を完了してください</string>
+    <string name="automation_activity_title">最近のアクティビティ</string>
+    <string name="automation_empty_hint_body">右上の + からトリガーを作成すると、時刻・通知・電池・位置で Zafiro を自動起動できます。</string>
 </resources>

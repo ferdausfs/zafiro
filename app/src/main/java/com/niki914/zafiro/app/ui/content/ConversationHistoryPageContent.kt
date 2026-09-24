@@ -18,6 +18,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -37,6 +39,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.niki914.uikit.base.BaseTheme
+import com.niki914.uikit.base.EmptyStateView
+import com.niki914.uikit.base.MotionTheme
+import com.niki914.uikit.base.SkeletonList
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.ProvideLiquidScreenContentForPreview
 import com.niki914.uikit.infra.component.SettingsGroupCard
@@ -64,8 +69,7 @@ internal fun ConversationHistoryPageContent(
 ) {
     var deleteConfirmation by remember { mutableStateOf<ConversationSummary?>(null) }
     when {
-        uiState.isLoading -> ConversationHistoryMessageContent(
-            title = stringResource(R.string.ui_conversation_history_loading),
+        uiState.isLoading -> ConversationHistorySkeletonContent(
             modifier = modifier,
         )
 
@@ -75,9 +79,7 @@ internal fun ConversationHistoryPageContent(
             modifier = modifier,
         )
 
-        uiState.conversations.isEmpty() -> ConversationHistoryMessageContent(
-            title = stringResource(R.string.ui_conversation_history_empty_title),
-            body = stringResource(R.string.ui_conversation_history_empty_body),
+        uiState.conversations.isEmpty() -> ConversationHistoryEmptyContent(
             modifier = modifier,
         )
 
@@ -164,7 +166,10 @@ private fun ConversationHistoryListContent(
                             onDismissRequest = {
                                 onConversationDeleteRequest(conversation)
                             },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                // Phase 2 UI：增删/折叠展开时条目平滑归位
+                                .animateItem(placementSpec = MotionTheme.standardSpring()),
                         )
                     }
                 }
@@ -319,6 +324,38 @@ private fun ConversationHistoryMessageContent(
                 }
             }
         }
+    }
+}
+
+/** Phase 2 UI：加载中的骨架屏（与列表卡片同节奏的呼吸占位）。 */
+@Composable
+private fun ConversationHistorySkeletonContent(modifier: Modifier = Modifier) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+            .padding(top = liquidScreenTopPadding(24.dp), bottom = 24.dp),
+    ) {
+        SkeletonList(rows = 5, rowHeight = 64.dp)
+    }
+}
+
+/** Phase 2 UI：友好空状态（图标 + 标题 + 说明，入场 emphasizedSpring）。 */
+@Composable
+private fun ConversationHistoryEmptyContent(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+            .padding(top = liquidScreenTopPadding(24.dp), bottom = 24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        EmptyStateView(
+            icon = Icons.Outlined.Forum,
+            title = stringResource(R.string.ui_conversation_history_empty_title),
+            body = stringResource(R.string.ui_conversation_history_empty_body),
+        )
     }
 }
 

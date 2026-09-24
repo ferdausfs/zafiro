@@ -630,4 +630,12 @@
     <string name="automation_battery_prompt_body">Battery optimization may put Zafiro to sleep in the background, breaking time and notification triggers. Consider adding Zafiro to the battery-optimization allowlist.</string>
     <string name="automation_battery_prompt_allow">Open settings</string>
     <string name="automation_battery_prompt_dismiss">Don\u2019t ask again</string>
+    <!-- Phase 2: status header / activity log -->
+    <string name="automation_status_service_on">Proactive mode running</string>
+    <string name="automation_status_service_off">Proactive mode stopped</string>
+    <string name="automation_status_listener_ok">Notification listener connected</string>
+    <string name="automation_status_listener_lost">Notification listener disconnected</string>
+    <string name="automation_status_kills">Put to sleep by the system %1$d times in 24h - finish battery exemption</string>
+    <string name="automation_activity_title">Recent activity</string>
+    <string name="automation_empty_hint_body">Tap + to create a trigger and let Zafiro wake up on a schedule, notification, battery level or location.</string>
 </resources>

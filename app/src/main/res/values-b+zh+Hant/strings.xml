@@ -614,4 +614,12 @@
     <string name="automation_battery_prompt_body">電池最佳化可能在背景休眠 Zafiro，導致定時與通知觸發失效。建議把 Zafiro 加入電池最佳化豁免名單。</string>
     <string name="automation_battery_prompt_allow">前往設定</string>
     <string name="automation_battery_prompt_dismiss">不再提示</string>
+    <!-- Phase 2：狀態頭部 / 活動日誌 -->
+    <string name="automation_status_service_on">主動模式執行中</string>
+    <string name="automation_status_service_off">主動模式已停止</string>
+    <string name="automation_status_listener_ok">通知監聽已連接</string>
+    <string name="automation_status_listener_lost">通知監聽未連接</string>
+    <string name="automation_status_kills">24 小時內被系統休眠 %1$d 次，建議完成電池豁免</string>
+    <string name="automation_activity_title">最近活動</string>
+    <string name="automation_empty_hint_body">從右上角 + 新增觸發器，讓 Zafiro 在特定時刻、通知、電量或地點自動喚醒。</string>
 </resources>

@@ -6,11 +6,17 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +37,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import com.niki914.uikit.base.EmptyStateView
+import com.niki914.uikit.base.MotionTheme
+import com.niki914.uikit.base.PulsingDot
+import com.niki914.uikit.base.SkeletonList
+import com.niki914.uikit.base.StatusDotRow
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.LiquidDialog
 import com.niki914.uikit.infra.component.SettingsGroupCard
@@ -46,6 +57,7 @@ import com.niki914.uikit.infra.nav.pageViewModel
 import com.niki914.uikit.base.rememberHaptics
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.automation.AutomationHub
+import com.niki914.zafiro.app.automation.SamsungPersistenceWatchdog
 import com.niki914.zafiro.app.automation.ZafiroAutomationService
 import com.niki914.zafiro.app.ui.PageChromeContribution
 import com.niki914.zafiro.app.ui.RegisterPageChrome
@@ -73,6 +85,8 @@ fun AutomationSettingsContent() {
     val serviceRunning by AutomationHub.serviceRunning.collectAsState()
     val listenerConnected by AutomationHub.listenerConnected.collectAsState()
     val recentActivity by AutomationHub.recentActivity.collectAsState()
+    // Phase 2 UI：Samsung 看门狗强杀计数（≥2 时状态头部呼吸告警）
+    val killCount24h by SamsungPersistenceWatchdog.killCount24h.collectAsState()
 
     var notifGranted by remember { mutableStateOf(false) }
     var batteryExempt by remember { mutableStateOf(false) }
@@ -127,6 +141,7 @@ fun AutomationSettingsContent() {
         serviceRunning = serviceRunning,
         listenerConnected = listenerConnected,
         recentActivity = recentActivity,
+        killCount24h = killCount24h,
         showBatteryPrompt = serviceRunning && !batteryExempt && !batteryPromptDismissed,
         onDismissBatteryPrompt = {
             batteryPromptDismissed = true
@@ -212,6 +227,7 @@ private fun AutomationSettingsContentBody(
     serviceRunning: Boolean,
     listenerConnected: Boolean,
     recentActivity: List<String>,
+    killCount24h: Int,
     showBatteryPrompt: Boolean,
     onDismissBatteryPrompt: () -> Unit,
     onToggleService: (Boolean) -> Unit,
@@ -260,16 +276,9 @@ private fun AutomationSettingsContentBody(
         ),
     )
 
-    // ---- 触发器列表区
-    val triggerRows = when {
-        uiState.isLoading -> listOf(
-            SettingsRowSpec.Message(
-                title = stringResource(R.string.automation_loading),
-                verticalPadding = 12.dp,
-            )
-        )
-
-        uiState.items.isNotEmpty() -> uiState.items.mapIndexed { index, item ->
+    // ---- 触发器列表区（加载/空态改由自定义骨架屏与空状态承担，见 contentBeforeSections）
+    val triggerRows = if (!uiState.isLoading) {
+        uiState.items.mapIndexed { index, item ->
             SettingsRowSpec.ToggleNavigation(
                 id = triggerRowId(index),
                 title = item.name,
@@ -277,31 +286,13 @@ private fun AutomationSettingsContentBody(
                 checked = item.enabled,
             )
         }
-
-        else -> listOf(
-            SettingsRowSpec.Message(
-                title = stringResource(R.string.automation_empty_hint),
-                verticalPadding = 16.dp,
-            )
-        )
+    } else {
+        emptyList()
     }
     sections += SettingsSectionSpec(
         layout = SettingsSectionLayout.CardList,
         rows = triggerRows,
     )
-
-    // ---- 最近活动区
-    if (recentActivity.isNotEmpty()) {
-        sections += SettingsSectionSpec(
-            layout = SettingsSectionLayout.GroupedCard,
-            rows = recentActivity.reversed().map { entry ->
-                SettingsRowSpec.Message(
-                    title = entry,
-                    verticalPadding = 6.dp,
-                )
-            },
-        )
-    }
 
     if (uiState.inlineErrorResId != null) {
         sections += SettingsSectionSpec(
@@ -321,11 +312,38 @@ private fun AutomationSettingsContentBody(
             sections = sections,
         ),
         contentBeforeSections = {
+            // Phase 2 UI：动画状态头部（服务/监听呼吸点 + kill 计数告警脉冲）
+            AutomationStatusHeader(
+                serviceRunning = serviceRunning,
+                listenerConnected = listenerConnected,
+                notifGranted = notifGranted,
+                killCount24h = killCount24h,
+            )
             if (showBatteryPrompt) {
                 OneTimeBatteryPromptCard(
                     onAllow = onRequestBatteryExemption,
                     onDismiss = onDismissBatteryPrompt,
                 )
+            }
+            // 触发器加载中 → 骨架屏；空 → 友好空状态（替代纯文本 Message 行）
+            if (uiState.isLoading) {
+                SettingsGroupCard {
+                    SkeletonList(rows = 3, modifier = Modifier.padding(vertical = 8.dp))
+                }
+            } else if (uiState.items.isEmpty()) {
+                SettingsGroupCard {
+                    EmptyStateView(
+                        icon = Icons.Outlined.Campaign,
+                        title = stringResource(R.string.automation_empty_hint),
+                        body = stringResource(R.string.automation_empty_hint_body),
+                    )
+                }
+            }
+        },
+        contentAfterSections = {
+            // Phase 2 UI：活动日志卡（新条目平滑自动滚动 + animateItem）
+            if (recentActivity.isNotEmpty()) {
+                AutomationActivityLogCard(entries = recentActivity)
             }
         },
         onAction = { action ->
@@ -356,6 +374,104 @@ private fun AutomationSettingsContentBody(
             }
         },
     )
+}
+
+/**
+ * Phase 2 UI：动画状态头部 —— 服务/监听状态呼吸点（颜色随状态平滑过渡），
+ * 24h 强杀 ≥2 时追加 error 色呼吸告警行（Samsung 看门狗联动）。
+ */
+@Composable
+private fun AutomationStatusHeader(
+    serviceRunning: Boolean,
+    listenerConnected: Boolean,
+    notifGranted: Boolean,
+    killCount24h: Int,
+) {
+    SettingsGroupCard {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+        ) {
+            StatusDotRow(
+                text = stringResource(
+                    if (serviceRunning) R.string.automation_status_service_on
+                    else R.string.automation_status_service_off
+                ),
+                color = if (serviceRunning) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.outline
+                },
+                pulse = serviceRunning,
+            )
+            if (serviceRunning) {
+                StatusDotRow(
+                    text = stringResource(
+                        if (notifGranted && listenerConnected) R.string.automation_status_listener_ok
+                        else R.string.automation_status_listener_lost
+                    ),
+                    color = if (notifGranted && listenerConnected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.tertiary
+                    },
+                )
+            }
+            if (killCount24h >= 2) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    PulsingDot(
+                        color = MaterialTheme.colorScheme.error,
+                        pulse = true,
+                    )
+                    Text(
+                        text = stringResource(R.string.automation_status_kills, killCount24h),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Phase 2 UI：活动日志卡 —— 新条目出现时平滑滚动回顶部（最新在最上），
+ * 条目淡入 + 位置动画走 MotionTheme.standardSpring。
+ */
+@Composable
+private fun AutomationActivityLogCard(entries: List<String>) {
+    val listState = rememberLazyListState()
+    LaunchedEffect(entries.size) {
+        if (entries.isNotEmpty()) listState.animateScrollToItem(0)
+    }
+    SettingsGroupCard(title = stringResource(R.string.automation_activity_title)) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 220.dp),
+            contentPadding = PaddingValues(vertical = 4.dp),
+        ) {
+            itemsIndexed(
+                entries.asReversed(),
+                key = { index, entry -> "$index-$entry" },
+            ) { _, entry ->
+                Text(
+                    text = entry,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .animateItem(placementSpec = MotionTheme.standardSpring())
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                )
+            }
+        }
+    }
 }
 
 /**
