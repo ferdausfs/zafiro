@@ -66,6 +66,38 @@ internal object ShellGrants {
         return if (anyAccepted) PermissionState.DENIED_BY_USER else PermissionState.FAILED
     }
 
+    /**
+     * Phase 2 看门狗：电池优化白名单（root/Shizuku 静默链）。
+     *
+     * 三条命令逐一执行：
+     *  - dumpsys deviceidle whitelist +pkg —— 系统级电池优化豁免表（等价用户在
+     *    设置里选「不优化」，PowerManager.isIgnoringBatteryOptimizations 随之变 true）
+     *  - appops RUN_IN_BACKGROUND allow —— API 26-27 的后台运行 op
+     *  - appops RUN_ANY_IN_BACKGROUND allow —— API 28+ 的后台运行 op
+     *
+     * ROM 差异：部分 One UI 版本会拒收某一条 appops（exit != 0），但不影响
+     * 其它命令生效 —— 主白名单命令（dumpsys）成功 + 任一 appops 成功即算成。
+     *
+     * @return 是否已取得有效白名单（进程内无法直接验证时保守返回命令接受度）
+     */
+    suspend fun whitelistBatteryOptimizations(
+        run: suspend (String) -> ShellOutcome?,
+        packageName: String,
+    ): Boolean {
+        val commands = listOf(
+            "dumpsys deviceidle whitelist +$packageName",
+            "appops set $packageName RUN_IN_BACKGROUND allow",
+            "appops set $packageName RUN_ANY_IN_BACKGROUND allow",
+        )
+        var accepted = 0
+        for (command in commands) {
+            val outcome = run(command) ?: return false // 进程创建失败：本通道不可用
+            Logger.d(TAG, "exec [$command] exit=${outcome.exitCode}")
+            if (outcome.isSuccess) accepted++
+        }
+        return accepted >= 2
+    }
+
     private fun mergeServices(stdout: List<String>, service: ComponentName): String =
         stdout.joinToString("").trim()
             .takeUnless { it.isBlank() || it == "null" }

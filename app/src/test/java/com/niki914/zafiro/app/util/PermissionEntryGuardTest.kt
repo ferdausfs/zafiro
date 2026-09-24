@@ -38,6 +38,19 @@ class PermissionEntryGuardTest {
         "checkSelfPermission(" to listOf(
             AllowRule("permission/TargetStatus.kt", ""),
             AllowRule("permission/ShizukuHandler.kt", "Shizuku.checkSelfPermission"),
+            // Phase 2 发现的存量违规（v1.7.0 地点触发器引入，先于守卫测试覆盖 app 模块）：
+            // ContextCompat.checkSelfPermission 只读查询 FINE_LOCATION，
+            // 而 PermissionManager 的 Permission 枚举尚无 LOCATION（收编需跨模块
+            // 扩展枚举 + TargetStatus，Phase 3 处理；此处仅只读，不申请）。
+            AllowRule("automation/AutomationHub.kt", "ContextCompat.checkSelfPermission"),
+            // 同上（系统集成设置页内的只读状态查询，随 requestPermissions 流一起收编）
+            AllowRule("ui/content/SystemIntegrationSettingsContent.kt", "checkSelfPermission"),
+            // Phase 2 发现的存量违规（v1.7.0/v1.8.0 agent-runtime 内建工具引入）：
+            // 工具执行前的运行时权限只读门（联系人/日历/外部存储）。agent-runtime
+            // 无法直接依赖 PermissionManager 门面，收编需要打通模块依赖 + 枚举扩展，
+            // Phase 3 处理；此处均为只读查询，不发起申请。
+            AllowRule("impl/SystemDataBuiltin.kt", "checkSelfPermission"),
+            AllowRule("impl/FileManagerBuiltin.kt", "checkSelfPermission"),
         ),
         // 系统弹窗的 launcher 调用 + Manifest 文本
         "POST_NOTIFICATIONS" to listOf(
@@ -60,6 +73,12 @@ class PermissionEntryGuardTest {
         ),
         "Shizuku.requestPermission" to listOf(
             AllowRule("permission/ShizukuHandler.kt", ""),
+        ),
+        // Phase 2 发现的存量违规（v1.7.0/v1.8.0 系统集成设置页引入）：运行时权限
+        // 请求 UI 流（通讯录/日历/定位等 provider 触发器的前置授权）。收编进
+        // PermissionManager 需要为 UI 通道扩展 requestPermissions 能力，Phase 3 处理。
+        "requestPermissions(" to listOf(
+            AllowRule("ui/content/SystemIntegrationSettingsContent.kt", ""),
         ),
     )
 

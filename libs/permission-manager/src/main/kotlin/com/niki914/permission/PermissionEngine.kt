@@ -56,4 +56,29 @@ class PermissionEngine(
         val final = attempts.lastOrNull()?.state ?: PermissionState.UNAVAILABLE
         return PermissionResult(permission, final, attempts)
     }
+
+    /**
+     * Phase 2 看门狗：静默电池白名单。按 ROOT_SHELL → SHIZUKU 顺序找「当前已
+     * 就绪的 shell 通道」执行白名单命令；就绪判定在 handler.runSilent 内部
+     * （不拉授权、不弹 UI，不满足即返回 null 降级下一通道）。
+     * 全部通道不可用 / 命令未接受时返回 false，由调用方降级为用户可见提示。
+     */
+    suspend fun silentBatteryWhitelist(packageName: String): Boolean {
+        for (channel in listOf(Channel.ROOT_SHELL, Channel.SHIZUKU)) {
+            val handler = handlers[channel] ?: continue
+            if (currentApi < handler.minSdk.api) continue
+            val accepted = try {
+                ShellGrants.whitelistBatteryOptimizations(
+                    run = { command -> handler.runSilent(command) },
+                    packageName = packageName,
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                false
+            }
+            if (accepted) return true
+        }
+        return false
+    }
 }

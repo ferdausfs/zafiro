@@ -621,4 +621,7 @@
     <string name="automation_battery_event_powersave_off">省電力モード OFF</string>
     <string name="samsung_fgs_killed_title">Zafiro がスリープされました</string>
     <string name="samsung_fgs_killed_body">One UI の電池最適化が Zafiro をディープスリープにした可能性があります。タップして電池設定を開き、制限リストから Zafiro を外してください。</string>
+    <!-- Phase 2 watchdog -->
+    <string name="watchdog_battery_prompt_title">バッテリー最適化の除外を推奨</string>
+    <string name="watchdog_battery_prompt_body">Zafiro は Root/Shizuku 権限がないため、バッテリー最適化の許可リストにサイレント追加できませんでした。長時間のバックグラウンド実行がスリープされる可能性があります。タップしてアプリを開き、設定を完了してください。</string>
 </resources>

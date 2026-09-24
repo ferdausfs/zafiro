@@ -97,6 +97,15 @@ class RootShellHandler(
         }
     }
 
+    /**
+     * Phase 2 看门狗静默链：仅当 root 已授权（Shell.isAppGrantedRoot() == true，
+     * 不拉 su、不弹授权框）时执行；否则返回 null 让上层降级到 Shizuku/UI 提示。
+     */
+    override suspend fun runSilent(command: String): ShellOutcome? {
+        if (status(Permission.ROOT) != PermissionState.GRANTED) return null
+        return run(command)
+    }
+
     private val Permission.isSupported: Boolean
         get() = this == Permission.ROOT ||
             this == Permission.OVERLAY ||

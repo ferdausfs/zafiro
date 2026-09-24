@@ -42,7 +42,9 @@ object SamsungPersistenceWatchdog {
     private const val KILL_WINDOW_MS = 24 * 60 * 60 * 1000L
     private const val WARN_COOLDOWN_MS = 12 * 60 * 60 * 1000L
     private const val WARN_THRESHOLD = 2
-    private const val KILLED_NOTIFICATION_ID = 1003
+    // Phase 2：1003 已被 ZafiroTaskService 的前台通知占用（碰撞会让高优提醒
+    // 覆盖/顶掉任务 FGS 通知），顺延到独立 id。
+    private const val KILLED_NOTIFICATION_ID = 1004
 
     /** 由 ZafiroAutomationService 在处理 ACTION_STOP 时置位（用户主动停止）。 */
     @Volatile

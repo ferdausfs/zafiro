@@ -621,4 +621,7 @@
     <string name="automation_battery_event_powersave_off">省电模式关闭</string>
     <string name="samsung_fgs_killed_title">Zafiro 被系统休眠</string>
     <string name="samsung_fgs_killed_body">One UI 电池优化可能已把 Zafiro 放入深度睡眠。点按前往电池设置，把 Zafiro 移出限制列表。</string>
+    <!-- Phase 2 看门狗 -->
+    <string name="watchdog_battery_prompt_title">建议开启电池优化豁免</string>
+    <string name="watchdog_battery_prompt_body">Zafiro 无法静默加入电池优化白名单（未取得 Root/Shizuku 授权）。长时间后台可能被系统休眠，点按打开应用完成设置。</string>
 </resources>

@@ -955,4 +955,7 @@ object AutomationHub {
         val next = (_recentActivity.value + "$stamped $entry").takeLast(MAX_LOG_ENTRIES)
         _recentActivity.value = next
     }
+
+    /** Phase 2：看门狗等自动化组件写入活动日志的公开入口（设置页可见）。 */
+    fun appendActivityLog(entry: String) = appendLog(entry)
 }

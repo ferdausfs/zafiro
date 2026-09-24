@@ -622,4 +622,7 @@
     <string name="automation_battery_event_powersave_off">Ahorro de energía desactivado</string>
     <string name="samsung_fgs_killed_title">Zafiro fue suspendido</string>
     <string name="samsung_fgs_killed_body">La optimización de batería de One UI pudo suspender a Zafiro. Toca para abrir la configuración de batería y quitar a Zafiro de la lista restringida.</string>
+    <!-- Phase 2 watchdog -->
+    <string name="watchdog_battery_prompt_title">Se recomienda la exención de optimización de batería</string>
+    <string name="watchdog_battery_prompt_body">Zafiro no pudo unirse silenciosamente a la lista blanca de optimización de batería (sin permiso Root/Shizuku). Las sesiones prolongadas en segundo plano pueden suspenderse: toca para abrir la aplicación y completar la configuración.</string>
 </resources>

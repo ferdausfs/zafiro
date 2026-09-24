@@ -11,6 +11,7 @@ import com.niki914.permission.PermissionState
 import com.niki914.xposed.api.util.ContextProvider
 import com.niki914.zafiro.app.automation.AutomationHub
 import com.niki914.zafiro.app.automation.BackgroundTaskHub
+import com.niki914.zafiro.app.automation.ServiceWatchdogWorker
 import com.niki914.zafiro.app.automation.TimeTriggerWorker
 import com.niki914.zafiro.app.conversation.ConversationPersister
 import com.niki914.zafiro.app.conversation.ConversationRepo
@@ -80,6 +81,8 @@ class App : Application(), androidx.work.Configuration.Provider {
         AutomationHub.init(applicationContext, applicationScope)
         // Phase 2：时间触发器 WorkManager 周期兑底（AlarmManager 之外的第三层）
         TimeTriggerWorker.ensureScheduled(applicationContext)
+        // Phase 2：服务看门狗（FGS 意外死亡后的重启 + 静默电池白名单）
+        ServiceWatchdogWorker.ensureScheduled(applicationContext)
         // 后台任务中枢：回合与 UI 生命周期解耦（FGS 保活 + 完成通知）
         BackgroundTaskHub.init(applicationContext, applicationScope)
         // PDF 文本提取引擎（通用文档上传，com.tom-roush:pdfbox-android）

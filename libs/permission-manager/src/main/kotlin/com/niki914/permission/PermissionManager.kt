@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.os.Build
 import androidx.activity.result.ActivityResultLauncher
+import kotlinx.coroutines.CancellationException
 
 /**
  * PRD 门面：bind/unbind + scope() API。
@@ -22,6 +23,7 @@ import androidx.activity.result.ActivityResultLauncher
 class PermissionManager private constructor(
     private val engine: PermissionEngine,
     private val ui: UiGate?,
+    private val packageName: String,
 ) {
     /** PRD 契约：onDestroy 必须 unbind，防泄漏 */
     fun bind(activity: Activity) {
@@ -51,6 +53,21 @@ class PermissionManager private constructor(
 
     fun scope(vararg channels: Channel): ScopeBuilder =
         ScopeBuilder(engine, channels.toList())
+
+    /**
+     * Phase 2 看门狗专用：不触发任何 UI 的电池优化白名单尝试。
+     * 仅当 root / Shizuku 授权已就绪时才真正执行（dumpsys deviceidle whitelist
+     * +pkg / appops RUN_*_IN_BACKGROUND allow，命令文本收敛在 ShellGrants）；
+     * 未就绪返回 false —— 调用方（后台 Worker）降级为用户可见提示通知，
+     * 绝不在后台 startActivity。
+     */
+    suspend fun trySilentBatteryWhitelist(): Boolean = try {
+        engine.silentBatteryWhitelist(packageName)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (t: Throwable) {
+        false
+    }
 
     companion object {
         /** PRD 默认链 */
@@ -88,7 +105,7 @@ class PermissionManager private constructor(
                     Channel.JUMP_SETTINGS to jump,
                 ),
             )
-            return PermissionManager(engine, ui)
+            return PermissionManager(engine, ui, app.packageName)
         }
 
         private fun queryTarget(

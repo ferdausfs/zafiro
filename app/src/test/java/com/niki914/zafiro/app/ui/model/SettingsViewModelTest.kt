@@ -34,6 +34,9 @@ class SettingsViewModelTest {
         assertEquals(
             listOf(
                 ZafiroSettingsGroup.BuiltinTools,
+                // v1.8.0 起系统集成组（Samsung/One UI provider 前置授权等）正式上架：
+                // 测试期望停滞在 v1.5 时代（Phase 2 刷新，与 BuiltinToolTest 同类修正）
+                ZafiroSettingsGroup.SystemIntegration,
                 ZafiroSettingsGroup.Skills,
                 ZafiroSettingsGroup.TokenVault,
                 ZafiroSettingsGroup.AgentPlan,

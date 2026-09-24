@@ -622,4 +622,7 @@
     <string name="automation_battery_event_powersave_off">Power saving OFF</string>
     <string name="samsung_fgs_killed_title">Zafiro was put to sleep</string>
     <string name="samsung_fgs_killed_body">One UI battery optimization may have deep-slept Zafiro. Tap to open battery settings and remove Zafiro from the restricted list.</string>
+    <!-- Phase 2 watchdog -->
+    <string name="watchdog_battery_prompt_title">Battery exemption recommended</string>
+    <string name="watchdog_battery_prompt_body">Zafiro could not silently join the battery-optimization allowlist (no Root/Shizuku grant). Long background sessions may be put to sleep - tap to open the app and finish setup.</string>
 </resources>
