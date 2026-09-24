@@ -1,8 +1,12 @@
 package com.niki914.zafiro.app.ui.content
 
+import android.content.Context
 import android.content.Intent
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -18,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -28,6 +33,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import com.niki914.uikit.infra.ConfirmationLiquidDialog
 import com.niki914.uikit.infra.LiquidDialog
+import com.niki914.uikit.infra.component.SettingsGroupCard
 import com.niki914.uikit.infra.component.LiquidTextField
 import com.niki914.uikit.infra.component.MaterialTintLiquidButton
 import com.niki914.uikit.infra.component.settings.SettingsPageSpec
@@ -37,6 +43,7 @@ import com.niki914.uikit.infra.component.settings.SettingsSectionLayout
 import com.niki914.uikit.infra.component.settings.SettingsSectionSpec
 import com.niki914.uikit.infra.component.settings.SettingsSpecPageContent
 import com.niki914.uikit.infra.nav.pageViewModel
+import com.niki914.uikit.base.rememberHaptics
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.automation.AutomationHub
 import com.niki914.zafiro.app.automation.ZafiroAutomationService
@@ -54,6 +61,10 @@ import com.niki914.zafiro.repo.AutomationTriggerSource
 
 private const val TRIGGER_ROW_ID_PREFIX = "automation.trigger."
 
+/** Phase 2：一次性电池引导卡的持久化（ dismissal 只在本地，不入同步设置）。 */
+private const val AUTOMATION_UI_PREFS = "automation_ui_prefs"
+private const val KEY_BATTERY_PROMPT_DISMISSED = "battery_prompt_dismissed"
+
 @Composable
 fun AutomationSettingsContent() {
     val context = LocalContext.current
@@ -65,6 +76,8 @@ fun AutomationSettingsContent() {
 
     var notifGranted by remember { mutableStateOf(false) }
     var batteryExempt by remember { mutableStateOf(false) }
+    // Phase 2（item 4）：一次性电池优化引导（用户 dismiss 后不再出现）
+    var batteryPromptDismissed by remember { mutableStateOf(true) }
 
     fun refreshStatus() {
         notifGranted = AutomationHub.isNotificationAccessGranted(context)
@@ -76,6 +89,8 @@ fun AutomationSettingsContent() {
     }
     LaunchedEffect(Unit) {
         refreshStatus()
+        batteryPromptDismissed = context.getSharedPreferences(AUTOMATION_UI_PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_BATTERY_PROMPT_DISMISSED, false)
     }
 
     // 从系统设置页返回时刷新状态
@@ -112,6 +127,12 @@ fun AutomationSettingsContent() {
         serviceRunning = serviceRunning,
         listenerConnected = listenerConnected,
         recentActivity = recentActivity,
+        showBatteryPrompt = serviceRunning && !batteryExempt && !batteryPromptDismissed,
+        onDismissBatteryPrompt = {
+            batteryPromptDismissed = true
+            context.getSharedPreferences(AUTOMATION_UI_PREFS, Context.MODE_PRIVATE)
+                .edit().putBoolean(KEY_BATTERY_PROMPT_DISMISSED, true).apply()
+        },
         onToggleService = { enabled ->
             if (enabled) {
                 ZafiroAutomationService.start(context)
@@ -191,6 +212,8 @@ private fun AutomationSettingsContentBody(
     serviceRunning: Boolean,
     listenerConnected: Boolean,
     recentActivity: List<String>,
+    showBatteryPrompt: Boolean,
+    onDismissBatteryPrompt: () -> Unit,
     onToggleService: (Boolean) -> Unit,
     onGrantNotificationAccess: () -> Unit,
     onRequestBatteryExemption: () -> Unit,
@@ -297,6 +320,14 @@ private fun AutomationSettingsContentBody(
             description = stringResource(R.string.automation_page_description),
             sections = sections,
         ),
+        contentBeforeSections = {
+            if (showBatteryPrompt) {
+                OneTimeBatteryPromptCard(
+                    onAllow = onRequestBatteryExemption,
+                    onDismiss = onDismissBatteryPrompt,
+                )
+            }
+        },
         onAction = { action ->
             when (action) {
                 is SettingsRowAction.Click -> when (action.id) {
@@ -325,6 +356,64 @@ private fun AutomationSettingsContentBody(
             }
         },
     )
+}
+
+/**
+ * Phase 2（item 4）：一次性电池优化引导卡。
+ * 出现条件（父层判定）：主动模式已开 && 未豁免 && 用户未 dismiss。
+ * 「去设置」走既有的直接豁免对话框（REQUEST_IGNORE_BATTERY_OPTIMIZATIONS），
+ * 调用方已内置系统页兑底；dismiss 持久化在本地偏好。
+ */
+@Composable
+private fun OneTimeBatteryPromptCard(
+    onAllow: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val haptics = rememberHaptics()
+    SettingsGroupCard {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.automation_battery_prompt_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = stringResource(R.string.automation_battery_prompt_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = stringResource(R.string.automation_battery_prompt_dismiss),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onDismiss,
+                        )
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                )
+                MaterialTintLiquidButton(
+                    text = stringResource(R.string.automation_battery_prompt_allow),
+                    onClick = {
+                        haptics.light()
+                        onAllow()
+                    },
+                )
+            }
+        }
+    }
 }
 
 /** 触发器摘要行：来源 · 参数。 */

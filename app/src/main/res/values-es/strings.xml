@@ -625,4 +625,9 @@
     <!-- Phase 2 watchdog -->
     <string name="watchdog_battery_prompt_title">Se recomienda la exención de optimización de batería</string>
     <string name="watchdog_battery_prompt_body">Zafiro no pudo unirse silenciosamente a la lista blanca de optimización de batería (sin permiso Root/Shizuku). Las sesiones prolongadas en segundo plano pueden suspenderse: toca para abrir la aplicación y completar la configuración.</string>
+    <!-- Phase 2: aviso único de exención de batería -->
+    <string name="automation_battery_prompt_title">Haz confiable el modo proactivo</string>
+    <string name="automation_battery_prompt_body">La optimización de batería puede suspender a Zafiro en segundo plano y romper los disparadores de hora y notificación. Considera añadir Zafiro a la lista blanca de optimización de batería.</string>
+    <string name="automation_battery_prompt_allow">Abrir ajustes</string>
+    <string name="automation_battery_prompt_dismiss">No volver a preguntar</string>
 </resources>

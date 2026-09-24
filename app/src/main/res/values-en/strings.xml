@@ -625,4 +625,9 @@
     <!-- Phase 2 watchdog -->
     <string name="watchdog_battery_prompt_title">Battery exemption recommended</string>
     <string name="watchdog_battery_prompt_body">Zafiro could not silently join the battery-optimization allowlist (no Root/Shizuku grant). Long background sessions may be put to sleep - tap to open the app and finish setup.</string>
+    <!-- Phase 2: one-time battery exemption prompt -->
+    <string name="automation_battery_prompt_title">Make proactive mode reliable</string>
+    <string name="automation_battery_prompt_body">Battery optimization may put Zafiro to sleep in the background, breaking time and notification triggers. Consider adding Zafiro to the battery-optimization allowlist.</string>
+    <string name="automation_battery_prompt_allow">Open settings</string>
+    <string name="automation_battery_prompt_dismiss">Don\u2019t ask again</string>
 </resources>

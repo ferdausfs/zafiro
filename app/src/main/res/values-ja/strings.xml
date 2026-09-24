@@ -624,4 +624,9 @@
     <!-- Phase 2 watchdog -->
     <string name="watchdog_battery_prompt_title">バッテリー最適化の除外を推奨</string>
     <string name="watchdog_battery_prompt_body">Zafiro は Root/Shizuku 権限がないため、バッテリー最適化の許可リストにサイレント追加できませんでした。長時間のバックグラウンド実行がスリープされる可能性があります。タップしてアプリを開き、設定を完了してください。</string>
+    <!-- Phase 2: 1 回限りのバッテリー導線 -->
+    <string name="automation_battery_prompt_title">プロアクティブモードを確実に</string>
+    <string name="automation_battery_prompt_body">バッテリー最適化によって Zafiro がバックグラウンドでスリープされ、時刻・通知トリガーが失効することがあります。許可リストへの追加を推奨します。</string>
+    <string name="automation_battery_prompt_allow">設定を開く</string>
+    <string name="automation_battery_prompt_dismiss">次回表示しない</string>
 </resources>

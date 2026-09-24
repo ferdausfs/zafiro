@@ -609,4 +609,9 @@
     <!-- Phase 2 看門狗 -->
     <string name="watchdog_battery_prompt_title">建議開啟電池最佳化豁免</string>
     <string name="watchdog_battery_prompt_body">Zafiro 無法靜默加入電池最佳化白名單（未取得 Root/Shizuku 授權）。長時間背景可能被系統休眠，點按開啟應用完成設定。</string>
+    <!-- Phase 2：一次性電池最佳化引導卡 -->
+    <string name="automation_battery_prompt_title">讓主動模式更可靠</string>
+    <string name="automation_battery_prompt_body">電池最佳化可能在背景休眠 Zafiro，導致定時與通知觸發失效。建議把 Zafiro 加入電池最佳化豁免名單。</string>
+    <string name="automation_battery_prompt_allow">前往設定</string>
+    <string name="automation_battery_prompt_dismiss">不再提示</string>
 </resources>

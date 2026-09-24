@@ -193,33 +193,49 @@ object SamsungPersistenceWatchdog {
 
     /**
      * 打开 One UI 电池/设备维护页；返回实际使用的路径描述
-     * （device_care_battery / device_care_main / battery_optimization / app_details）。
+     * （samsung_battery / samsung_device_care / device_care_main /
+     *  battery_optimization / app_details）。
+     *
+     * Phase 2（item 4）修复：旧实现对每个候选直接 `Intent().setComponent(...)`
+     * 包 runCatching —— setComponent 从不抛错，runCatching 恒成功，第一个候选
+     * 被无条件返回；组件名在别的 One UI 版本上不存在时，点按通知/设置行会
+     * 静默失败。现在每个候选先过 resolveActivity 验证（manifest 已声明
+     * com.samsung.android.lool 的 queries，包可见性成立），选第一个真实可解析的。
      */
     fun buildBatterySettingsIntent(context: Context): Intent {
-        // 1) Device Care battery 页
-        runCatching {
-            return Intent().setComponent(
-                ComponentName(
-                    "com.samsung.android.lool",
-                    "com.samsung.android.sm.ui.battery.BatteryActivity",
-                )
+        // 1) One UI 电池页 / 设备维护页：候选 activity 名逐个验证
+        //    （One UI 大版本间类名不同，列多个候选；无效名 resolve 不中自动跳过）
+        val samsungCandidates = listOf(
+            "com.samsung.android.sm.ui.battery.BatteryActivity" to "samsung_battery",
+            "com.samsung.android.sm.ui.devicecare.DeviceCareActivity" to "samsung_device_care",
+            "com.samsung.android.sm.ui.cless.DtActivity" to "samsung_device_care",
+        )
+        for ((cls, path) in samsungCandidates) {
+            val intent = Intent().setComponent(
+                ComponentName("com.samsung.android.lool", cls)
             ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (resolveSafely(context, intent)) return intent
         }
-        // 2) Device Care 主页
+        // 2) Device Care / 电池管家主入口
         runCatching {
             context.packageManager.getLaunchIntentForPackage("com.samsung.android.lool")
                 ?.let { return it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
         }
-        // 3) 系统电池优化
+        // 3) 系统电池优化列表（全部应用，兼容非 Samsung ROM）
         runCatching {
             return Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        // 4) 应用详情
+        // 4) 应用详情（最后兜底）
         return Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
             .setData(Uri.parse("package:${context.packageName}"))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
+
+    /** resolveActivity 结果为空 = 该 activity 在此 ROM 上不存在。 */
+    private fun resolveSafely(context: Context, intent: Intent): Boolean = runCatching {
+        context.packageManager.resolveActivity(intent, 0) != null
+    }.getOrDefault(false)
 
     /** 设置页直接调用的打开入口（无返回值版）。 */
     fun openBatterySettings(context: Context) {
