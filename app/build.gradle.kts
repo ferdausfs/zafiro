@@ -23,8 +23,8 @@ android {
         applicationId = "com.niki914.zafiro"
         minSdk = 26
         targetSdk = 34
-        versionName = "1.9.0"
-        versionCode = 17
+        versionName = "2.0.0"
+        versionCode = 18
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
@@ -111,6 +111,10 @@ dependencies {
     implementation(project(":xposed-runtime"))
     implementation(project(":store"))
     implementation(project(":libs:logging"))
+
+    // v2.0.0 Jarvis Mode：ShizukuProvider 类必须在本模块 classpath（manifest 声明）。
+    // permission-manager 里的 provider 是 implementation 依赖，不会传递到这里。
+    implementation("dev.rikka.shizuku:provider:13.1.5")
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation(project(":libs:okia"))
