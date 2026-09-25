@@ -1,5 +1,6 @@
 package com.niki914.zafiro.chat.agentic.buildin
 
+import com.niki914.zafiro.chat.agentic.buildin.impl.DeviceCapabilitiesBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.ExecutePythonBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.FileManagerBuiltin
 import com.niki914.zafiro.chat.agentic.buildin.impl.FindInstalledAppsBuiltin
@@ -55,6 +56,8 @@ class BuiltinToolRegistry(
                 PdfToolsBuiltin(),
                 // v1.8.0 Samsung-Optimized Agent
                 SamsungBuiltin(),
+                // v2.0.0 Jarvis Mode: one-call capability check & auto-fix
+                DeviceCapabilitiesBuiltin(),
             )
         )
     }

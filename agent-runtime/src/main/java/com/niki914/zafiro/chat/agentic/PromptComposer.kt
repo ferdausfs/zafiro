@@ -52,6 +52,7 @@ class PromptComposer {
                         hasBuiltinTool(input, "file_manager") ||
                         hasBuiltinTool(input, "pdf_tools")
             },
+            CAPABILITY_DIRECTIVE.takeIf { hasBuiltinTool(input, "device_capabilities") },
             SAMSUNG_ONEUI_DIRECTIVE.takeIf {
                 SamsungDevice.isSamsungManufacturer && hasBuiltinTool(input, "samsung")
             },
@@ -205,6 +206,30 @@ class PromptComposer {
                     "user-configurable in Zafiro settings — not system restrictions. A block means " +
                     "the user declined the action or the rule is too strict; the user can adjust " +
                     "the rule in Zafiro settings. Do not describe blocks as system policy."
+
+        /**
+         * v2.0.0 Jarvis Mode — capability-first execution. Kills the "system blocked it"
+         * class of answers: the agent must check & auto-fix capabilities instead of
+         * reporting permission failures.
+         */
+        internal const val CAPABILITY_DIRECTIVE =
+            "# Capability-first execution (no excuses)\n" +
+                    "You have the device_capabilities tool. Before ANY system-level operation " +
+                    "(privileged shell commands, screen control, contacts/calendar, storage, " +
+                    "exact alarms, battery exemption), and ALWAYS immediately after any tool " +
+                    "fails with a permission/authorization error, call device_capabilities " +
+                    "with {\"action\":\"autofix\"} — it silently grants every permission a " +
+                    "privileged shell can grant (runtime permissions, overlay, accessibility " +
+                    "service, battery whitelist) and tells you exactly what remains.\n" +
+                    "NEVER claim 'the system blocked it', 'permission missing', or 'I cannot " +
+                    "do this because of restrictions' without having called " +
+                    "device_capabilities autofix in that turn. If a capability is still " +
+                    "missing after autofix, tell the user the EXACT remaining switch in one " +
+                    "short line (e.g. 'Open Shizuku and tap Start via Wireless debugging'), " +
+                    "then continue with everything that IS possible.\n" +
+                    "Prefer terminal with identity=root or identity=shizuku for privileged " +
+                    "work instead of embedding su in commands — the authorization dialog " +
+                    "appears once and is remembered."
 
         internal const val MEMORY_GUIDANCE =
             "You have persistent memory across sessions. Save durable facts using the memory " +

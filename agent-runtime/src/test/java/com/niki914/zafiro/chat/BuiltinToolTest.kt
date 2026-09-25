@@ -41,6 +41,7 @@ class BuiltinToolTest {
 
         assertEquals(
             listOf(
+                "device_capabilities",
                 "execute_python",
                 "file_manager",
                 "find_installed_apps",
