@@ -611,6 +611,13 @@
     <string name="samsung_deep_sleep">ディープスリープアプリ（One UI のバックグラウンド制限）</string>
     <string name="samsung_deep_sleep_hint">タップして One UI の電池画面を開く：Zafiro を「ディープスリープアプリ」から外し、使用していないアプリのスリープを無効にする</string>
     <string name="samsung_persistence_ok">過去 24 時間はシステムに強制停止されていません</string>
+    <string name="jarvis_autonomous_title">自律実行（Jarvis モード）</string>
+    <string name="jarvis_autonomous_desc">オンにすると、バックグラウンドで確認が必要なリスクコマンドも自動で許可され、「操作が拒否されました」で終わらなくなります。オフにすると常に確認します。本当に危険なルールは実行ルールで強制ブロックできます。</string>
+    <string name="jarvis_autofix_title">機能チェックとワンタップ自動修復</string>
+    <string name="jarvis_autofix_idle">タップ：root/Shizuku で可能な権限をすべて自動付与</string>
+    <string name="jarvis_autofix_running">チェックと修復中…</string>
+    <string name="jarvis_autofix_failed">自動修復に失敗しました。後でもう一度お試しください。</string>
+    <string name="jarvis_section_desc">Jarvis モード：エージェントは「権限がない／システムにブロックされた」と回答しなくなります。特権シェルで連絡先・カレンダー・オーバーレイ・ユーザー補助・電池ホワイトリストを自動付与してからコマンドを実行します。初回のみ Magisk/Shizuku の許可ダイアログが出ることがあります。一度許可すれば維持されます。</string>
     <string name="samsung_persistence_killed">過去 24 時間に %1$d 回システムが再起動 — 電池制限を確認してください</string>
     <string name="samsung_not_samsung">Samsung 端末ではないため、One UI 固有の最適化は適用されません。他の機能には影響しません</string>
     <string name="samsung_nav_gesture">フルスクリーンジェスチャー</string>

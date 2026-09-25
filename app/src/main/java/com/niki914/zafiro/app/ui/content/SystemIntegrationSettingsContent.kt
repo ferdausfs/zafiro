@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
@@ -33,7 +34,11 @@ import com.niki914.zafiro.app.R
 import com.niki914.zafiro.app.automation.AutomationHub
 import com.niki914.zafiro.app.automation.SamsungPersistenceWatchdog
 import com.niki914.zafiro.app.ui.nav.ZafiroSettingsGroup
+import com.niki914.zafiro.chat.agentic.buildin.BuiltinToolRequest
+import com.niki914.zafiro.chat.agentic.buildin.impl.DeviceCapabilitiesBuiltin
 import com.niki914.zafiro.chat.agentic.samsung.SamsungDevice
+import com.niki914.zafiro.repo.XRepo
+import kotlinx.coroutines.launch
 
 /**
  * System Integration 设置页（v1.7.0 System-Integrated Autonomous Agent）。
@@ -63,6 +68,11 @@ fun SystemIntegrationSettingsContent(
     var navMode by remember { mutableStateOf(SamsungDevice.NAV_MODE_UNKNOWN) }
     var batteryIgnored by remember { mutableStateOf(false) }
     var killCount24h by remember { mutableStateOf(0) }
+    // v2.0.0 Jarvis Mode
+    var autonomous by remember { mutableStateOf(true) }
+    var fixRunning by remember { mutableStateOf(false) }
+    var fixSummary by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
     fun refreshStatus() {
         contactsGranted = context.isPermissionGranted(Manifest.permission.READ_CONTACTS)
@@ -81,7 +91,10 @@ fun SystemIntegrationSettingsContent(
         killCount24h = SamsungPersistenceWatchdog.killCount24h.value
     }
 
-    LaunchedEffect(Unit) { refreshStatus() }
+    LaunchedEffect(Unit) {
+        refreshStatus()
+        autonomous = XRepo.executionRules.autonomousExecution()
+    }
 
     // 从系统设置页返回时刷新状态
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -98,6 +111,32 @@ fun SystemIntegrationSettingsContent(
     ) { refreshStatus() }
 
     val sections = mutableListOf<SettingsSectionSpec>()
+
+    // ---- v2.0.0 Jarvis Mode: autonomous execution + capability auto-fix
+    sections += SettingsSectionSpec(
+        layout = SettingsSectionLayout.GroupedCard,
+        rows = listOf(
+            SettingsRowSpec.Toggle(
+                id = "jarvis.autonomous",
+                title = stringResource(R.string.jarvis_autonomous_title),
+                summary = stringResource(R.string.jarvis_autonomous_desc),
+                checked = autonomous,
+            ),
+            SettingsRowSpec.Action(
+                id = "jarvis.autofix",
+                title = stringResource(R.string.jarvis_autofix_title),
+                summary = when {
+                    fixRunning -> stringResource(R.string.jarvis_autofix_running)
+                    fixSummary != null -> fixSummary
+                    else -> stringResource(R.string.jarvis_autofix_idle)
+                },
+            ),
+            SettingsRowSpec.Message(
+                title = stringResource(R.string.jarvis_section_desc),
+                verticalPadding = 10.dp,
+            ),
+        ),
+    )
 
     // ---- Cap 1: Direct System API Integration
     sections += SettingsSectionSpec(
@@ -243,7 +282,33 @@ fun SystemIntegrationSettingsContent(
         ),
         onAction = { action ->
             when (action) {
+                is SettingsRowAction.ToggleChanged -> when (action.id) {
+                    "jarvis.autonomous" -> {
+                        autonomous = action.checked
+                        scope.launch { XRepo.executionRules.setAutonomousExecution(action.checked) }
+                    }
+                }
+
                 is SettingsRowAction.Click -> when (action.id) {
+                    "jarvis.autofix" -> if (!fixRunning) {
+                        fixRunning = true
+                        scope.launch {
+                            val result = runCatching {
+                                DeviceCapabilitiesBuiltin().invoke(
+                                    BuiltinToolRequest(
+                                        "device_capabilities",
+                                        """{"action":"autofix"}""",
+                                    )
+                                )
+                            }
+                            fixSummary = result.getOrNull()?.message
+                                ?: result.exceptionOrNull()?.message
+                                ?: context.getString(R.string.jarvis_autofix_failed)
+                            refreshStatus()
+                            fixRunning = false
+                        }
+                    }
+
                     "sys.contacts" -> requestPermissions(
                         permissionLauncher,
                         contactsGranted,

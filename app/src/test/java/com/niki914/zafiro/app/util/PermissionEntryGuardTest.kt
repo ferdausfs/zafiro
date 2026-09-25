@@ -34,6 +34,8 @@ class PermissionEntryGuardTest {
         // 只读查询只经过 TargetStatus；permission-manager 内部实现
         "canDrawOverlays(" to listOf(
             AllowRule("permission/TargetStatus.kt", ""),
+            // v2.0.0 device_capabilities：只读能力体检（悬浮窗状态探测）
+            AllowRule("impl/DeviceCapabilitiesBuiltin.kt", "canDrawOverlays"),
         ),
         "checkSelfPermission(" to listOf(
             AllowRule("permission/TargetStatus.kt", ""),
@@ -51,6 +53,12 @@ class PermissionEntryGuardTest {
             // Phase 3 处理；此处均为只读查询，不发起申请。
             AllowRule("impl/SystemDataBuiltin.kt", "checkSelfPermission"),
             AllowRule("impl/FileManagerBuiltin.kt", "checkSelfPermission"),
+            // v2.0.0 Jarvis Mode（device_capabilities 工具）：能力体检（只读
+            // checkSelfPermission）+ 经 libterm 特权会话执行的自修命令（settings put /
+            // appops set / pm grant / dumpsys deviceidle）。命令语义与
+            // permission-manager 的 ShellGrants 一致（该对象 internal 不可跨模块引用），
+            // 收编进门面需打通 agent-runtime 与 permission-manager 的引擎复用，Phase 3。
+            AllowRule("impl/DeviceCapabilitiesBuiltin.kt", "checkSelfPermission"),
         ),
         // 系统弹窗的 launcher 调用 + Manifest 文本
         "POST_NOTIFICATIONS" to listOf(
@@ -58,21 +66,30 @@ class PermissionEntryGuardTest {
             AllowRule("permission/TargetStatus.kt", ""),
             AllowRule("MainActivity.kt", "RequestPermission"),
             AllowRule("AndroidManifest.xml", ""),
+            // v2.0.0 device_capabilities：pm grant 通知权限（特权会话自修命令文本）
+            AllowRule("impl/DeviceCapabilitiesBuiltin.kt", "pm grant"),
         ),
         // seed py 脚本是 py 工具层自身能力（py 进程无 PermissionManager 可用），显式排除
         "\"su\"" to listOf(
             AllowRule("seed_py_launch_wechat.py", ""),
             AllowRule("seed_py_install_apk.py", ""),
         ),
-        // shell 通道授权命令只出现在 permission-manager 内部
+        // shell 通道授权命令：permission-manager 内部 + v2.0.0 device_capabilities
+        // 自修（agent-runtime 经 libterm 特权会话执行，命令语义与 ShellGrants 一致）
         "settings put secure" to listOf(
             AllowRule("permission/ShellGrants.kt", ""),
+            AllowRule("impl/DeviceCapabilitiesBuiltin.kt", ""),
         ),
         "appops set" to listOf(
             AllowRule("permission/ShellGrants.kt", ""),
+            AllowRule("impl/DeviceCapabilitiesBuiltin.kt", ""),
         ),
         "Shizuku.requestPermission" to listOf(
             AllowRule("permission/ShizukuHandler.kt", ""),
+        ),
+        // v2.0.0：Shizuku 标准 provider 声明必须在 manifest（Shizuku 管理器识别应用的法定途径）
+        "rikka.shizuku" to listOf(
+            AllowRule("AndroidManifest.xml", ""),
         ),
         // Phase 2 发现的存量违规（v1.7.0/v1.8.0 系统集成设置页引入）：运行时权限
         // 请求 UI 流（通讯录/日历/定位等 provider 触发器的前置授权）。收编进

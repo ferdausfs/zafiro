@@ -612,6 +612,13 @@
     <string name="samsung_deep_sleep">Deep sleeping apps (One UI background limits)</string>
     <string name="samsung_deep_sleep_hint">Tap to open the One UI battery page: remove Zafiro from Deep sleeping apps and disable Put unused apps to sleep</string>
     <string name="samsung_persistence_ok">Not force-stopped by the system in the last 24 hours</string>
+    <string name="jarvis_autonomous_title">Autonomous execution (Jarvis mode)</string>
+    <string name="jarvis_autonomous_desc">When on, risk-confirmed commands are auto-approved in background turns instead of failing with \'operation denied\'. Turn off to always be asked. Truly dangerous rules can still be hard-blocked in Execution rules.</string>
+    <string name="jarvis_autofix_title">Capability check \<string name="jarvis_autofix_title">Capability check &amp; one-tap auto-fix</string>amp; one-tap auto-fix</string>
+    <string name="jarvis_autofix_idle">Tap: silently grant everything possible via root/Shizuku</string>
+    <string name="jarvis_autofix_running">Checking and fixing…</string>
+    <string name="jarvis_autofix_failed">Auto-fix failed, try again later.</string>
+    <string name="jarvis_section_desc">Jarvis mode: the agent stops answering with \'permission missing / the system blocked it\'. It first self-grants contacts, calendar, overlay, accessibility and battery whitelist through a privileged shell, then runs your command. The Magisk/Shizuku authorization dialog may appear once — approve it and it stays granted.</string>
     <string name="samsung_persistence_killed">Restarted by the system %1$d time(s) in 24h — check battery limits</string>
     <string name="samsung_not_samsung">Not a Samsung device — One UI-specific optimizations do not apply; other capabilities are unaffected</string>
     <string name="samsung_nav_gesture">Full-screen gestures</string>

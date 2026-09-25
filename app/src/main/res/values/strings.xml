@@ -611,6 +611,13 @@
     <string name="samsung_deep_sleep">深度睡眠应用（One UI 后台限制）</string>
     <string name="samsung_deep_sleep_hint">点按打开 One UI 电池页：把 Zafiro 移出「深度睡眠应用」并关闭「让未使用的应用进入休眠」</string>
     <string name="samsung_persistence_ok">过去 24 小时未被系统强制停止</string>
+    <string name="jarvis_autonomous_title">自主执行（Jarvis 模式）</string>
+    <string name="jarvis_autonomous_desc">开启后，后台轮次中需要确认的风险命令自动放行，不再以「操作被拒绝」收场。关闭则始终先询问。高危模式仍可在执行规则里设为硬拦截。</string>
+    <string name="jarvis_autofix_title">能力体检与一键自修</string>
+    <string name="jarvis_autofix_idle">点一下：用 root/Shizuku 把能授的权限全部静默授掉</string>
+    <string name="jarvis_autofix_running">正在体检并修复…</string>
+    <string name="jarvis_autofix_failed">自修失败，稍后重试。</string>
+    <string name="jarvis_section_desc">Jarvis 模式：agent 不再动辄报「没有权限/被系统挡住」。它会先用特权 shell 自动补齐通讯录、日历、悬浮窗、无障碍、电池白名单等全部可授能力，然后继续执行你的命令。首次修复时 Magisk/Shizuku 授权弹窗可能出现一次，同意后长期有效。</string>
     <string name="samsung_persistence_killed">过去 24 小时被系统重启 %1$d 次——建议检查电池限制</string>
     <string name="samsung_not_samsung">当前不是三星设备，One UI 专属优化不适用；其他能力不受影响</string>
     <string name="samsung_nav_gesture">全屏手势</string>

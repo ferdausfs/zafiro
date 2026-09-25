@@ -612,6 +612,13 @@
     <string name="samsung_deep_sleep">Aplicaciones en suspensión profunda (límites de One UI)</string>
     <string name="samsung_deep_sleep_hint">Toca para abrir la página de batería de One UI: quita Zafiro de Aplicaciones en suspensión profunda y desactiva Poner en suspensión las aplicaciones sin usar</string>
     <string name="samsung_persistence_ok">Sin paradas forzadas del sistema en las últimas 24 horas</string>
+    <string name="jarvis_autonomous_title">Ejecución autónoma (modo Jarvis)</string>
+    <string name="jarvis_autonomous_desc">Activado: los comandos de riesgo confirmado se aprueban automáticamente en segundo plano en vez de fallar con \'operación denegada\'. Desactívalo para que siempre se pregunte. Las reglas realmente peligrosas pueden bloquearse en Reglas de ejecución.</string>
+    <string name="jarvis_autofix_title">Chequeo de capacidades y autofijo</string>
+    <string name="jarvis_autofix_idle">Toca: concede en silencio todo lo posible vía root/Shizuku</string>
+    <string name="jarvis_autofix_running">Comprobando y reparando…</string>
+    <string name="jarvis_autofix_failed">El autofijo falló, inténtalo más tarde.</string>
+    <string name="jarvis_section_desc">Modo Jarvis: el agente deja de responder \'falta permiso / el sistema lo bloqueó\'. Primero auto-concede contactos, calendario, superposición, accesibilidad y lista blanca de batería con un shell privilegiado, y luego ejecuta tu orden. El diálogo de Magisk/Shizuku puede aparecer una vez; apruébalo y quedará concedido.</string>
     <string name="samsung_persistence_killed">Reiniciado por el sistema %1$d vez/veces en 24 h: revisa los límites de batería</string>
     <string name="samsung_not_samsung">No es un dispositivo Samsung: las optimizaciones de One UI no se aplican; las demás funciones no se ven afectadas</string>
     <string name="samsung_nav_gesture">Gestos a pantalla completa</string>
