@@ -182,5 +182,15 @@
                 android:value="androidx.startup"
                 tools:node="remove" />
         </provider>
+
+        <!-- v2.0.0 Jarvis Mode：Shizuku 标准声明 —— Shizuku 管理器借此识别本应用，
+             binder 授权回调不再依赖运气；authority 必须是 ${applicationId}.shizuku -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:multiprocess="false"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
     </application>
 </manifest>
