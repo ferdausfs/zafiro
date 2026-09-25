@@ -8,8 +8,10 @@ import com.niki914.zafiro.repo.SettingsJsonCodecUtils.string
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.stringArray
 import com.niki914.zafiro.repo.SettingsJsonCodecUtils.stringValues
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 import com.niki914.zafiro.settings.model.RuntimeTakeoverRule as TakeoverRule
@@ -36,23 +38,37 @@ internal object RuleSettingsCodec {
             }
     }
 
-    fun encodeExecutionRules(rules: List<ExecutionRule>): String {
-        return JsonObject(
-            mapOf(
-                RULES_KEY to JsonArray(
-                    rules.map { rule ->
-                        JsonObject(
-                            mapOf(
-                                ID_KEY to JsonPrimitive(rule.id),
-                                NAME_KEY to JsonPrimitive(rule.name),
-                                ENABLED_MODE_KEY to JsonPrimitive(rule.enabledMode.name),
-                                PATTERNS_KEY to stringArray(rule.patterns),
-                            )
+    fun encodeExecutionRules(
+        rules: List<ExecutionRule>,
+        autonomousExecution: Boolean? = null,
+    ): String {
+        val fields = linkedMapOf<String, JsonElement>(
+            RULES_KEY to JsonArray(
+                rules.map { rule ->
+                    JsonObject(
+                        mapOf(
+                            ID_KEY to JsonPrimitive(rule.id),
+                            NAME_KEY to JsonPrimitive(rule.name),
+                            ENABLED_MODE_KEY to JsonPrimitive(rule.enabledMode.name),
+                            PATTERNS_KEY to stringArray(rule.patterns),
                         )
-                    }
-                )
+                    )
+                }
             )
-        ).toString()
+        )
+        if (autonomousExecution != null) {
+            fields[AUTONOMOUS_KEY] = JsonPrimitive(autonomousExecution)
+        }
+        return JsonObject(fields).toString()
+    }
+
+    /**
+     * v2.0.0 Jarvis Mode：读自主执行开关。字段缺失 = 未配置，返回 null
+     * （调用方按默认 true 处理，文档里不写入，保持与旧版本字节兼容）。
+     */
+    fun parseAutonomousExecution(json: String): Boolean? {
+        val element = parseObject(json)[AUTONOMOUS_KEY] ?: return null
+        return (element as? JsonPrimitive)?.booleanOrNull
     }
 
     fun parseTakeoverRules(json: String): List<TakeoverRule> {
@@ -138,4 +154,5 @@ internal object RuleSettingsCodec {
     private const val TARGET_KEY = "target"
     private const val ENABLED_KEY = "enabled"
     private const val PATTERNS_KEY = "patterns"
+    private const val AUTONOMOUS_KEY = "autonomous_execution"
 }

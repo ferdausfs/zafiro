@@ -118,6 +118,10 @@ class XRepoRuntimeGateway(
         return repo.executionRules.list()
     }
 
+    override suspend fun autonomousExecution(): Boolean {
+        return repo.executionRules.autonomousExecution()
+    }
+
     override suspend fun listVaultTokens(): List<RuntimeVaultTokenSummary> {
         return TokenVault.list()
     }

@@ -58,6 +58,14 @@ interface RuntimeSettingsGateway {
 
     suspend fun listExecutionRules(): List<RuntimeExecutionRule>
 
+    /**
+     * v2.0.0 Jarvis Mode：自主执行。
+     * true = 后台轮次里 CONFIRM 型规则拿不到用户确认时直接放行（不再以
+     * "operation was denied" 失败收场）；false = 保持旧行为（拒绝）。
+     * 默认 true —— 宿主实现未迁移时也按自主执行算。
+     */
+    suspend fun autonomousExecution(): Boolean = true
+
     // --- 凭证库（vault_token）与 Agent 计划（todo_write）---
     // 提供默认空实现：测试 fake 与宿主实现未迁移时不被破坏。
 

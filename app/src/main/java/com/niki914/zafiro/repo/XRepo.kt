@@ -867,7 +867,63 @@ class ExecutionRulesApi internal constructor(
         if (json == """{"rules":[]}""") {
             return LocalSettingsDefaults.defaultExecutionRules
         }
-        return RuleSettingsCodec.parseExecutionRules(json)
+        val rules = RuleSettingsCodec.parseExecutionRules(json)
+        return migrateLegacyDefaultRules(rules)
+    }
+
+    /**
+     * v2.0.0 Jarvis Mode：v1.x 默认规则（CONFIRM 含 \bsu\b / \bsetprop\b）如果用户
+     * 从未改过（pattern 集合与旧默认完全一致），自动升级为新默认并持久化；
+     * 用户自定义过的规则一律不动。这是"system blocked it"死循环的主修复点之一。
+     */
+    private suspend fun migrateLegacyDefaultRules(rules: List<ExecutionRule>): List<ExecutionRule> {
+        val isLegacyDefault = rules.firstOrNull {
+            it.id == "builtin-dangerous" &&
+                    it.patterns.toSet() == LocalSettingsDefaults.LEGACY_V1_DANGEROUS_PATTERNS.toSet()
+        } ?: return rules
+        val upgraded = rules.map { rule ->
+            if (rule.id == isLegacyDefault.id) {
+                rule.copy(patterns = LocalSettingsDefaults.DANGEROUS_PATTERNS)
+            } else {
+                rule
+            }
+        }
+        runCatching {
+            repo.updateJson(StoreDescriptorRegistry.RULES_EXECUTION_ID) { json ->
+                encodeExecutionRulesForWrite(
+                    json,
+                    RuleSettingsCodec.parseExecutionRules(json).map { rule ->
+                        if (rule.id == isLegacyDefault.id) {
+                            rule.copy(patterns = LocalSettingsDefaults.DANGEROUS_PATTERNS)
+                        } else {
+                            rule
+                        }
+                    },
+                )
+            }
+        }
+        Logger.i(
+            "niki914_nexus_ExecutionRules",
+            "migrated legacy default execution rules (dropped su/setprop from CONFIRM set)",
+        )
+        return upgraded
+    }
+
+    /** v2.0.0 自主执行开关：字段缺失视为 true（未配置 = 自主执行）。 */
+    suspend fun autonomousExecution(): Boolean {
+        val json = repo.readJson(StoreDescriptorRegistry.RULES_EXECUTION_ID)
+        return RuleSettingsCodec.parseAutonomousExecution(json) ?: true
+    }
+
+    suspend fun setAutonomousExecution(enabled: Boolean) {
+        repo.updateJson(StoreDescriptorRegistry.RULES_EXECUTION_ID) { json ->
+            val rules = RuleSettingsCodec.parseExecutionRules(json)
+            if (rules.isEmpty()) {
+                """{"rules":[],"_explicit":true,"autonomous_execution":$enabled}"""
+            } else {
+                RuleSettingsCodec.encodeExecutionRules(rules, enabled)
+            }
+        }
     }
 
     suspend fun get(id: String): ExecutionRule? {
@@ -882,7 +938,7 @@ class ExecutionRulesApi internal constructor(
             } else {
                 rules + rule
             }
-            encodeExecutionRulesForWrite(updated)
+            encodeExecutionRulesForWrite(json, updated)
         }
     }
 
@@ -899,13 +955,14 @@ class ExecutionRulesApi internal constructor(
             } else {
                 withoutPrevious + rule
             }
-            encodeExecutionRulesForWrite(updated)
+            encodeExecutionRulesForWrite(json, updated)
         }
     }
 
     suspend fun delete(id: String) {
         repo.updateJson(StoreDescriptorRegistry.RULES_EXECUTION_ID) { json ->
             encodeExecutionRulesForWrite(
+                json,
                 RuleSettingsCodec.parseExecutionRules(json).filterNot { it.id == id },
             )
         }
@@ -914,6 +971,7 @@ class ExecutionRulesApi internal constructor(
     suspend fun setEnabledMode(id: String, enabledMode: ExecutionRuleEnabledMode) {
         repo.updateJson(StoreDescriptorRegistry.RULES_EXECUTION_ID) { json ->
             encodeExecutionRulesForWrite(
+                json,
                 RuleSettingsCodec.parseExecutionRules(json).map { rule ->
                     if (rule.id == id) rule.copy(enabledMode = enabledMode) else rule
                 },
@@ -921,11 +979,19 @@ class ExecutionRulesApi internal constructor(
         }
     }
 
-    private fun encodeExecutionRulesForWrite(rules: List<ExecutionRule>): String {
+    /** 重编码时保留文档级 autonomous_execution / _explicit 标记。 */
+    private fun encodeExecutionRulesForWrite(
+        sourceJson: String,
+        rules: List<ExecutionRule>,
+    ): String {
+        val autonomous = RuleSettingsCodec.parseAutonomousExecution(sourceJson)
         return if (rules.isEmpty()) {
-            EXPLICIT_EMPTY_RULES_JSON
+            when (autonomous) {
+                null -> EXPLICIT_EMPTY_RULES_JSON
+                else -> """{"rules":[],"_explicit":true,"autonomous_execution":$autonomous}"""
+            }
         } else {
-            RuleSettingsCodec.encodeExecutionRules(rules)
+            RuleSettingsCodec.encodeExecutionRules(rules, autonomous)
         }
     }
 

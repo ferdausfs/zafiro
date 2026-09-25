@@ -1,5 +1,6 @@
 package com.niki914.zafiro.chat.agentic.shell
 
+import com.niki914.logging.Logger
 import com.niki914.xposed.api.util.LockState
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import com.niki914.zafiro.util.TextPatternMatcher
@@ -21,6 +22,11 @@ class ShellCommandSafetyPolicy(
         RuntimeEnvironment.awaitSettingsGateway().listExecutionRules()
     },
     private val isUnlocked: suspend () -> Boolean = { LockState.isUnlocked() },
+    // v2.0.0 Jarvis Mode：无 UI 可确认时（后台自动化轮次），自主执行模式直接放行
+    // CONFIRM 型规则（高危规则用户仍可在设置里改为 ALWAYS 硬拦）。
+    private val autonomousExecution: suspend () -> Boolean = {
+        RuntimeEnvironment.awaitSettingsGateway().autonomousExecution()
+    },
 ) {
     suspend fun evaluate(command: String, toolName: String): ShellCommandPolicyDecision {
         val rules = listExecutionRules()
@@ -71,11 +77,21 @@ class ShellCommandSafetyPolicy(
                         reason = "The user denied this operation.",
                     )
 
-                    ToolPermissionResponse.DENIED_UNAVAILABLE -> return blocked.copy(
-                        code = "CONFIRM_UNAVAILABLE",
-                        reason = "Tool execution requires user confirmation, but this session " +
-                                "cannot request permission from the user. The operation was denied.",
-                    )
+                    ToolPermissionResponse.DENIED_UNAVAILABLE -> {
+                        if (autonomousExecution()) {
+                            Logger.w(
+                                LOG_TAG,
+                                "CONFIRM rule '${rule.name}' has no UI to ask (background turn); " +
+                                        "autonomous execution auto-approves",
+                            )
+                            continue
+                        }
+                        return blocked.copy(
+                            code = "CONFIRM_UNAVAILABLE",
+                            reason = "Tool execution requires user confirmation, but this session " +
+                                    "cannot request permission from the user. The operation was denied.",
+                        )
+                    }
                 }
             }
         }
@@ -205,6 +221,7 @@ class ShellCommandSafetyPolicy(
     }
 
     companion object {
+        private const val LOG_TAG = "ShellCommandSafetyPolicy"
         private const val MAX_SHELL_PAYLOAD_DEPTH = 8
         private val SHELL_TOKEN_SEPARATORS = setOf(';', '&', '|', '`', '$', '(', ')', '<', '>')
         private val SHELL_COMMANDS = setOf("sh", "bash", "mksh")

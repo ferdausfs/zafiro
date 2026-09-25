@@ -2,6 +2,7 @@ package com.niki914.zafiro.chat
 
 import com.niki914.zafiro.chat.agentic.shell.ShellCommandSafetyPolicy
 import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
+import com.niki914.zafiro.chat.util.SilentLoggerRule
 import com.niki914.zafiro.settings.RuntimeEnvironment
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
@@ -9,6 +10,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Rule
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -16,6 +18,10 @@ import com.niki914.zafiro.settings.model.RuntimeExecutionRule as ExecutionRule
 import com.niki914.zafiro.settings.model.RuntimeExecutionRuleEnabledMode as ExecutionRuleEnabledMode
 
 class ShellCommandSafetyPolicyTest {
+
+    @get:Rule
+    val silentLogger = SilentLoggerRule()
+
     @After
     fun tearDown() {
         RuntimeEnvironment.clearForTest()
@@ -151,11 +157,28 @@ class ShellCommandSafetyPolicyTest {
         ToolPermissionCoordinator.isUiResumed = false
         ToolPermissionCoordinator.backgroundConfirmationHandler = null
 
-        val decision = ShellCommandSafetyPolicy()
+        val decision = ShellCommandSafetyPolicy(autonomousExecution = { false })
             .evaluate("rm -rf /data/local/tmp/cache", toolName = "terminal")
 
         assertFalse(decision.allowed)
         assertEquals("CONFIRM_UNAVAILABLE", decision.code)
+    }
+
+    @Test
+    fun evaluate_confirmRuleAutoApprovedWhenAutonomous() = runTest {
+        installRuntimeSettingsGatewayForTest(
+            FakeRuntimeSettingsGateway(
+                executionRules = listOf(dangerousRule(enabledMode = ExecutionRuleEnabledMode.CONFIRM))
+            )
+        )
+        ToolPermissionCoordinator.isUiResumed = false
+        ToolPermissionCoordinator.backgroundConfirmationHandler = null
+
+        // v2.0.0 Jarvis Mode：默认自主执行 —— 无 UI 可确认时 CONFIRM 直接放行
+        val decision = ShellCommandSafetyPolicy()
+            .evaluate("rm -rf /data/local/tmp/cache", toolName = "terminal")
+
+        assertTrue(decision.allowed)
     }
 
     @Test
