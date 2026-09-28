@@ -13,6 +13,7 @@ import com.niki914.zafiro.app.automation.AutomationHub
 import com.niki914.zafiro.app.automation.BackgroundTaskHub
 import com.niki914.zafiro.app.automation.ServiceWatchdogWorker
 import com.niki914.zafiro.app.automation.TimeTriggerWorker
+import com.niki914.zafiro.app.cloud.CloudOutboxDispatcher
 import com.niki914.zafiro.app.conversation.ConversationPersister
 import com.niki914.zafiro.app.conversation.ConversationRepo
 import com.niki914.zafiro.app.overlay.ToolPermissionOverlay
@@ -85,6 +86,8 @@ class App : Application(), androidx.work.Configuration.Provider {
         ServiceWatchdogWorker.ensureScheduled(applicationContext)
         // 后台任务中枢：回合与 UI 生命周期解耦（FGS 保活 + 完成通知）
         BackgroundTaskHub.init(applicationContext, applicationScope)
+        // Cloud Brain 离线发件箱：断网任务排队，联网后自动重放（主进程专属）
+        CloudOutboxDispatcher.init(applicationContext, applicationScope)
         // PDF 文本提取引擎（通用文档上传，com.tom-roush:pdfbox-android）
         com.tom_roush.pdfbox.android.PDFBoxResourceLoader.init(applicationContext)
 
