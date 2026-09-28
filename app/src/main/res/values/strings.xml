@@ -644,4 +644,25 @@
     <string name="automation_status_kills">24 小时内被系统休眠 %1$d 次，建议完成电池豁免</string>
     <string name="automation_activity_title">最近活动</string>
     <string name="automation_empty_hint_body">从右上角 + 新建触发器，让 Zafiro 在特定时刻、通知、电量或地点自动唤醒。</string>
+    <!-- Cloud Brain (Cloudflare) -->
+    <string name="ui_settings_cloud_brain">Cloud Brain（Cloudflare）</string>
+    <string name="ui_settings_cloud_brain_summary">AI Gateway 路由与云端大脑：重活上服务器，手机只执行动作</string>
+    <string name="cloud_gateway_enable">通过 AI Gateway 路由模型请求</string>
+    <string name="cloud_gateway_account_id">Account ID</string>
+    <string name="cloud_gateway_name">Gateway 名称</string>
+    <string name="cloud_gateway_custom_slug">自定义 provider slug</string>
+    <string name="cloud_brain_enable">自动化任务走 Cloud Brain</string>
+    <string name="cloud_brain_worker_url">Worker 地址</string>
+    <string name="cloud_brain_secret">共享密钥</string>
+    <string name="cloud_test_connection">测试连接</string>
+    <string name="cloud_test_running">测试中…</string>
+    <string name="cloud_test_ok">已连接：%1$s</string>
+    <string name="cloud_test_fail">连接失败：%1$s</string>
+    <string name="cloud_outbox_pending">离线队列（待重放）</string>
+    <string name="cloud_dialog_save">保存</string>
+    <string name="cloud_hint_account_id">Cloudflare 账户 ID（32 位十六进制）</string>
+    <string name="cloud_hint_gateway_name">Cloudflare 控制台创建的 Gateway 名</string>
+    <string name="cloud_hint_custom_slug">未收录 provider 的 slug，留空 = 使用内置映射</string>
+    <string name="cloud_hint_worker_url">https://zafiro-cloud-brain.你的子域.workers.dev</string>
+    <string name="cloud_hint_secret">部署 Worker 时设置的 CLOUD_BRAIN_SECRET</string>
 </resources>

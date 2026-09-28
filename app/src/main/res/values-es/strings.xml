@@ -645,4 +645,25 @@
     <string name="automation_status_kills">Suspendido por el sistema %1$d veces en 24 h: completa la exención de batería</string>
     <string name="automation_activity_title">Actividad reciente</string>
     <string name="automation_empty_hint_body">Toca + para crear un disparador y que Zafiro se active por horario, notificación, batería o ubicación.</string>
+    <!-- Cloud Brain (Cloudflare) -->
+    <string name="ui_settings_cloud_brain">Cloud Brain (Cloudflare)</string>
+    <string name="ui_settings_cloud_brain_summary">Enrutado por AI Gateway y cerebro en el servidor: el trabajo pesado se ejecuta en tu servidor, el teléfono solo ejecuta acciones</string>
+    <string name="cloud_gateway_enable">Enrutar llamadas LLM vía AI Gateway</string>
+    <string name="cloud_gateway_account_id">Account ID</string>
+    <string name="cloud_gateway_name">Nombre del Gateway</string>
+    <string name="cloud_gateway_custom_slug">Slug de proveedor personalizado</string>
+    <string name="cloud_brain_enable">Automatizar vía Cloud Brain</string>
+    <string name="cloud_brain_worker_url">URL del Worker</string>
+    <string name="cloud_brain_secret">Secreto compartido</string>
+    <string name="cloud_test_connection">Probar conexión</string>
+    <string name="cloud_test_running">Probando…</string>
+    <string name="cloud_test_ok">Conectado: %1$s</string>
+    <string name="cloud_test_fail">Error: %1$s</string>
+    <string name="cloud_outbox_pending">Cola sin conexión</string>
+    <string name="cloud_dialog_save">Guardar</string>
+    <string name="cloud_hint_account_id">ID de cuenta de Cloudflare (32 hex)</string>
+    <string name="cloud_hint_gateway_name">Nombre del Gateway creado en el panel de Cloudflare</string>
+    <string name="cloud_hint_custom_slug">Slug para proveedores no mapeados; vacío = mapeo integrado</string>
+    <string name="cloud_hint_worker_url">https://zafiro-cloud-brain.tu-subdominio.workers.dev</string>
+    <string name="cloud_hint_secret">CLOUD_BRAIN_SECRET configurado al desplegar el Worker</string>
 </resources>

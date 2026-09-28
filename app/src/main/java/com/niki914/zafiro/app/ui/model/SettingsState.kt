@@ -92,6 +92,7 @@ private fun settingsSections(): List<SettingsSectionDefinition> {
                 ZafiroSettingsGroup.Takeover,
                 ZafiroSettingsGroup.ExecutionRules,
                 ZafiroSettingsGroup.Automation,
+                ZafiroSettingsGroup.CloudBrain,
                 ZafiroSettingsGroup.Tasks,
             ),
         ),

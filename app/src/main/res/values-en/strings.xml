@@ -645,4 +645,25 @@
     <string name="automation_status_kills">Put to sleep by the system %1$d times in 24h - finish battery exemption</string>
     <string name="automation_activity_title">Recent activity</string>
     <string name="automation_empty_hint_body">Tap + to create a trigger and let Zafiro wake up on a schedule, notification, battery level or location.</string>
+    <!-- Cloud Brain (Cloudflare) -->
+    <string name="ui_settings_cloud_brain">Cloud Brain (Cloudflare)</string>
+    <string name="ui_settings_cloud_brain_summary">AI Gateway routing and a server-side brain: heavy work runs on your server, the phone only executes actions</string>
+    <string name="cloud_gateway_enable">Route LLM calls via AI Gateway</string>
+    <string name="cloud_gateway_account_id">Account ID</string>
+    <string name="cloud_gateway_name">Gateway name</string>
+    <string name="cloud_gateway_custom_slug">Custom provider slug</string>
+    <string name="cloud_brain_enable">Automate via Cloud Brain</string>
+    <string name="cloud_brain_worker_url">Worker URL</string>
+    <string name="cloud_brain_secret">Shared secret</string>
+    <string name="cloud_test_connection">Test connection</string>
+    <string name="cloud_test_running">Testing…</string>
+    <string name="cloud_test_ok">Connected: %1$s</string>
+    <string name="cloud_test_fail">Failed: %1$s</string>
+    <string name="cloud_outbox_pending">Offline queue</string>
+    <string name="cloud_dialog_save">Save</string>
+    <string name="cloud_hint_account_id">Cloudflare account ID (32 hex chars)</string>
+    <string name="cloud_hint_gateway_name">Gateway name created in the Cloudflare dashboard</string>
+    <string name="cloud_hint_custom_slug">Slug for unmapped providers; empty = built-in mapping</string>
+    <string name="cloud_hint_worker_url">https://zafiro-cloud-brain.your-subdomain.workers.dev</string>
+    <string name="cloud_hint_secret">CLOUD_BRAIN_SECRET set when deploying the Worker</string>
 </resources>

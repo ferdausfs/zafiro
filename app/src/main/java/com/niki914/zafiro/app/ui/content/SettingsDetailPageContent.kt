@@ -128,6 +128,11 @@ fun SettingsDetailPageContent(
         return
     }
 
+    if (group == ZafiroSettingsGroup.CloudBrain) {
+        CloudflareSettingsContent()
+        return
+    }
+
     if (group == ZafiroSettingsGroup.SystemIntegration) {
         SystemIntegrationSettingsContent(
             onOpenAutomation = {

@@ -644,4 +644,25 @@
     <string name="automation_status_kills">24 時間間に %1$d 回スリープされました。バッテリー許可を完了してください</string>
     <string name="automation_activity_title">最近のアクティビティ</string>
     <string name="automation_empty_hint_body">右上の + からトリガーを作成すると、時刻・通知・電池・位置で Zafiro を自動起動できます。</string>
+    <!-- Cloud Brain (Cloudflare) -->
+    <string name="ui_settings_cloud_brain">Cloud Brain（Cloudflare）</string>
+    <string name="ui_settings_cloud_brain_summary">AI Gateway ルーティングとサーバー側の脳：重い処理はサーバーで、スマホはアクション実行のみ</string>
+    <string name="cloud_gateway_enable">AI Gateway 経由でモデル要求をルーティング</string>
+    <string name="cloud_gateway_account_id">Account ID</string>
+    <string name="cloud_gateway_name">Gateway 名</string>
+    <string name="cloud_gateway_custom_slug">カスタム provider slug</string>
+    <string name="cloud_brain_enable">Cloud Brain で自動実行</string>
+    <string name="cloud_brain_worker_url">Worker URL</string>
+    <string name="cloud_brain_secret">共有シークレット</string>
+    <string name="cloud_test_connection">接続テスト</string>
+    <string name="cloud_test_running">テスト中…</string>
+    <string name="cloud_test_ok">接続成功：%1$s</string>
+    <string name="cloud_test_fail">接続失敗：%1$s</string>
+    <string name="cloud_outbox_pending">オフラインキュー</string>
+    <string name="cloud_dialog_save">保存</string>
+    <string name="cloud_hint_account_id">Cloudflare アカウント ID（32 桁の 16 進）</string>
+    <string name="cloud_hint_gateway_name">Cloudflare ダッシュボードで作成した Gateway 名</string>
+    <string name="cloud_hint_custom_slug">未対応 provider の slug。空欄 = 内蔵マッピング</string>
+    <string name="cloud_hint_worker_url">https://zafiro-cloud-brain.あなたのサブドメイン.workers.dev</string>
+    <string name="cloud_hint_secret">Worker デプロイ時に設定した CLOUD_BRAIN_SECRET</string>
 </resources>

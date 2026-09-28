@@ -48,6 +48,8 @@ class SettingsViewModelTest {
                 ZafiroSettingsGroup.Takeover,
                 ZafiroSettingsGroup.ExecutionRules,
                 ZafiroSettingsGroup.Automation,
+                // v2.1.0: Cloud Brain (Cloudflare) 组加入 rules 区块
+                ZafiroSettingsGroup.CloudBrain,
                 ZafiroSettingsGroup.Tasks,
             ),
             state.sections[3].groups,

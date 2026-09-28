@@ -73,6 +73,11 @@ enum class ZafiroSettingsGroup(
         summaryRes = R.string.ui_settings_automation_summary,
         routeSuffix = "automation",
     ),
+    CloudBrain(
+        titleRes = R.string.ui_settings_cloud_brain,
+        summaryRes = R.string.ui_settings_cloud_brain_summary,
+        routeSuffix = "cloud-brain",
+    ),
     Tasks(
         titleRes = R.string.ui_settings_tasks,
         summaryRes = R.string.ui_settings_tasks_summary,
