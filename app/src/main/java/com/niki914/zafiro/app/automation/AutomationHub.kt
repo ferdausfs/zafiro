@@ -14,6 +14,8 @@ import androidx.core.app.NotificationManagerCompat
 import com.niki914.logging.Logger
 import com.niki914.zafiro.app.MainActivity
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.app.cloud.CloudBrainManager
+import com.niki914.zafiro.app.cloud.CloudBrainQueuedOffline
 import com.niki914.zafiro.chat.ActiveTurnStore
 import com.niki914.zafiro.chat.LLMController
 import com.niki914.zafiro.chat.LlmStreamEvent
@@ -779,7 +781,7 @@ object AutomationHub {
         Logger.i(LOG_TAG, "alert fired trigger=${hit.trigger.id}")
     }
 
-    /** AGENT：唤醒 LLM Agent 自主执行。 */
+    /** AGENT：唤醒 LLM Agent 自主执行（Cloud Brain 启用时优先走云端大脑）。 */
     private suspend fun runAgent(hit: TriggerHit) {
         if (!waitUntilAgentFree()) {
             appendLog("[skip] ${hit.trigger.name}: agent busy")
@@ -787,6 +789,48 @@ object AutomationHub {
         }
         val prompt = buildAgentPrompt(hit)
         appendLog("[agent] ${hit.trigger.name} -> working…")
+        val cloudSettings = runCatching { XRepo.cloud.settings() }.getOrNull()
+        if (cloudSettings?.brainReady() == true) {
+            runCloudAgent(hit, prompt)
+            return
+        }
+        runLocalAgent(hit, prompt)
+    }
+
+    /** Cloud Brain 路径：任务交给云端大脑，手机只执行下发的动作。 */
+    private suspend fun runCloudAgent(hit: TriggerHit, prompt: String) {
+        val title = hit.appLabel.ifBlank { hit.trigger.name }
+        val reply = try {
+            CloudBrainManager.runTask(
+                task = prompt,
+                context = "",
+                source = hit.trigger.name,
+            )
+        } catch (offline: CloudBrainQueuedOffline) {
+            appendLog("[cloud] ${hit.trigger.name}: queued offline")
+            postResultNotification(
+                title = title,
+                body = offline.message?.take(300) ?: "queued offline",
+            )
+            return
+        } catch (t: Throwable) {
+            appendLog("[cloud] ${hit.trigger.name}: failed (${t.message?.take(80)})")
+            postResultNotification(title = title, body = t.message ?: "cloud turn failed")
+            return
+        }
+        val summary = reply.lines()
+            .lastOrNull { it.isNotBlank() }
+            ?: reply.takeLast(200).ifBlank { "done" }
+        appendLog("[cloud] ${hit.trigger.name}: ${summary.take(80)}")
+        postResultNotification(
+            title = title,
+            body = summary.take(300),
+        )
+        Logger.i(LOG_TAG, "cloud agent turn done trigger=${hit.trigger.id}")
+    }
+
+    /** 本地路径：LLMController.stream 直连（原有行为）。 */
+    private suspend fun runLocalAgent(hit: TriggerHit, prompt: String) {
         var lastText = ""
         var errorMessage: String? = null
         try {
