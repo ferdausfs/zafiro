@@ -22,7 +22,7 @@ class XRepoRuntimeGateway(
         val memories = repo.agents.memoriesFor(agentId)
         return RuntimeLlmConfig(
             provider = active?.provider.orEmpty(),
-            endpoint = active?.endpoint.orEmpty(),
+            endpoint = applyGateway(active?.provider.orEmpty(), active?.endpoint.orEmpty()),
             // vault 引用优先：key 明文只在运行时内存中出现，不落盘
             apiKey = active?.resolveApiKey().orEmpty(),
             model = active?.model.orEmpty(),
@@ -42,7 +42,7 @@ class XRepoRuntimeGateway(
         return repo.fallback.resolveConfigs(activeConfigId = doc.activeId).map { saved ->
             RuntimeLlmConfig(
                 provider = saved.provider,
-                endpoint = saved.endpoint,
+                endpoint = applyGateway(saved.provider, saved.endpoint),
                 apiKey = saved.resolveApiKey().orEmpty(),
                 model = saved.model,
                 protocol = saved.protocol,
@@ -136,5 +136,21 @@ class XRepoRuntimeGateway(
 
     override suspend fun writeTodoItems(items: List<RuntimeTodoItem>) {
         repo.todo.replaceAll(items)
+    }
+
+    /**
+     * AI Gateway 端点改写：网关设置完备且 provider 可映射时返回网关 URL，
+     * 否则原样直连（Ollama / 未收录 provider / 已是网关地址均不改写）。
+     */
+    private suspend fun applyGateway(providerId: String, endpoint: String): String {
+        val cloud = repo.cloud.settings()
+        if (!cloud.gatewayReady()) return endpoint
+        return CloudflareGateway.gatewayEndpointFor(
+            providerId = providerId,
+            customSlug = cloud.customProviderSlug,
+            originalEndpoint = endpoint,
+            accountId = cloud.accountId,
+            gatewayName = cloud.gatewayName,
+        ) ?: endpoint
     }
 }
