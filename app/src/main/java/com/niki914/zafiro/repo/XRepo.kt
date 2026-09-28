@@ -49,6 +49,8 @@ object XRepo {
     val executionRules: ExecutionRulesApi = ExecutionRulesApi(this)
     val takeoverRules: TakeoverRulesApi = TakeoverRulesApi(this)
     val automation: AutomationApi = AutomationApi(this)
+    val cloud: CloudflareApi = CloudflareApi(this)
+    val cloudOutbox: CloudOutboxApi = CloudOutboxApi(this)
     val agents: AgentApi = AgentApi(this)
     val skills: SkillApi = SkillApi(this)
     val storage: StorageApi = StorageApi(this)

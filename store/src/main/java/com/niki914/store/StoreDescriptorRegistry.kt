@@ -15,6 +15,8 @@ object StoreDescriptorRegistry {
     const val AUTOMATION_TRIGGERS_ID = "automation.triggers"
     const val RULES_TAKEOVER_ID = "rules.takeover"
     const val APP_STATE_ID = "app.state"
+    const val CLOUD_SETTINGS_ID = "cloud.settings"
+    const val CLOUD_OUTBOX_ID = "cloud.outbox"
     const val LLM_PROVIDERS_ID = "llm.providers"
     const val LLM_FALLBACK_ID = "llm.fallback"
     const val AGENT_TASKS_ID = "agent.tasks"
@@ -65,6 +67,16 @@ object StoreDescriptorRegistry {
             """{"rules":[]}"""
         ),
         StoreDescriptor(APP_STATE_ID, "settings/app_state.json"),
+        StoreDescriptor(
+            CLOUD_SETTINGS_ID,
+            "settings/cloud/settings.json",
+            """{}"""
+        ),
+        StoreDescriptor(
+            CLOUD_OUTBOX_ID,
+            "settings/cloud/outbox.json",
+            """{"items":[]}"""
+        ),
         StoreDescriptor(
             LLM_PROVIDERS_ID,
             "settings/llm/providers.json",
