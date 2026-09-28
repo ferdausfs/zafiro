@@ -1,0 +1,26 @@
+name = "zafiro-cloud-brain"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+
+# Observability: tail logs in the dashboard (Workers -> zafiro-cloud-brain -> Logs)
+[observability]
+enabled = true
+
+# One Durable Object per agent session: keeps conversation state while the
+# phone is offline and drives the LLM loop between phone action rounds.
+[durable_objects]
+bindings = [{ name = "AGENT_SESSION", class_name = "AgentSession" }]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["AgentSession"]
+
+[vars]
+# Any OpenAI-compatible endpoint works here, e.g.:
+#   https://api.openai.com/v1
+#   https://gateway.ai.cloudflare.com/v1/<account>/<gateway>/openai/v1
+#   https://openrouter.ai/api/v1
+# BRAIN_MODEL   = "gpt-4o-mini"
+# BRAIN_API_KEY is a SECRET:  npx wrangler secret put BRAIN_API_KEY
+# CLOUD_BRAIN_SECRET is a SECRET: npx wrangler secret put CLOUD_BRAIN_SECRET
+# Optional: TAVILY_API_KEY for higher-quality web_search (falls back to DuckDuckGo)

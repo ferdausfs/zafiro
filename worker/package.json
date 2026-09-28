@@ -1,0 +1,17 @@
+{
+  "name": "zafiro-cloud-brain",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloud Brain worker for Zafiro: server-side agent loop + Durable Object sessions",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260926.1",
+    "typescript": "^5.6.3",
+    "wrangler": "^4.24.0"
+  }
+}
