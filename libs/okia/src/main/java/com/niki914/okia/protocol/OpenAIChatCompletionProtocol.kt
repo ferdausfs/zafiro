@@ -105,6 +105,7 @@ class OpenAIChatCompletionProtocol(
                     else -> streamError.toString()
                 }
                 emit(
+                emit(
                     ProtocolEvent.Error(
                         LLMError(LLMErrorCode.Transport, message),
                         retryable = true
@@ -415,6 +416,7 @@ class OpenAIChatCompletionProtocol(
                     LLMError(LLMErrorCode.Transport, "stream ended without finish_reason"),
                     retryable = true
                 )
+            )
             )
             "stop", "end" -> emit(
                 ProtocolEvent.Completed(
