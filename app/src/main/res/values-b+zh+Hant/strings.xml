@@ -636,6 +636,7 @@
     <string name="cloud_gateway_account_id">Account ID</string>
     <string name="cloud_gateway_name">Gateway 名稱</string>
     <string name="cloud_gateway_custom_slug">自訂 provider slug</string>
+    <string name="cloud_gateway_cf_token">CF API Token（可選）</string>
     <string name="cloud_brain_enable">自動化任務走 Cloud Brain</string>
     <string name="cloud_brain_worker_url">Worker 位址</string>
     <string name="cloud_brain_secret">共享金鑰</string>
@@ -648,6 +649,7 @@
     <string name="cloud_hint_account_id">Cloudflare 帳戶 ID（32 位十六進位）</string>
     <string name="cloud_hint_gateway_name">Cloudflare 控制台建立的 Gateway 名</string>
     <string name="cloud_hint_custom_slug">未收錄 provider 的 slug，留空 = 使用內建映射</string>
+    <string name="cloud_hint_cf_token">Gateway Authentication 開啟時必填（AI Gateway: Run 權限）；也是 Cloudflare AI provider 的 API Key</string>
     <string name="cloud_hint_worker_url">https://zafiro-cloud-brain.你的子域.workers.dev</string>
     <string name="cloud_hint_secret">部署 Worker 時設定的 CLOUD_BRAIN_SECRET</string>
 </resources>

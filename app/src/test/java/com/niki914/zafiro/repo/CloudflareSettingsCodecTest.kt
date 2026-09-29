@@ -19,6 +19,7 @@ class CloudflareSettingsCodecTest {
         assertEquals("", settings.customProviderSlug)
         assertEquals("", settings.workerUrl)
         assertEquals("", settings.brainSecret)
+        assertEquals("", settings.cfApiToken)
         assertFalse(settings.gatewayReady())
         assertFalse(settings.brainReady())
     }
@@ -34,6 +35,7 @@ class CloudflareSettingsCodecTest {
             // parse() 会 trimEnd('/')：round-trip 用无尾斜杠形式
             workerUrl = "https://zafiro-cloud-brain.example.workers.dev",
             brainSecret = "s3cret",
+            cfApiToken = "cf-token",
         )
 
         val parsed = CloudflareSettingsCodec.parse(CloudflareSettingsCodec.encode(original))

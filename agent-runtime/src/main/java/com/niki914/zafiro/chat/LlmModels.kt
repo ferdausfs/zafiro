@@ -22,6 +22,8 @@ data class ResolvedLlmConfig(
     val retryMaxAttempts: Int = 3,
     /** 思考强度；null = 不发送思考字段（Provider 默认行为）。 */
     val thinkingLevel: ThinkingLevel? = null,
+    /** 宿主注入的网关级请求头（如 cf-aig-authorization）。 */
+    val extraHeaders: Map<String, String> = emptyMap(),
 )
 
 data class ResolvedTools(

@@ -57,7 +57,21 @@ Zafiro → Settings → **Cloud Brain (Cloudflare)**:
   *Provider mapping*: `openai`, `anthropic`, `deepseek`, `openrouter`, `google` are auto-mapped.
   Other providers need the *custom provider slug* (whatever Cloudflare documents for that provider).
 * Cloud Brain section → enable → Worker URL (`https://zafiro-cloud-brain.<sub>.workers.dev`) + Shared secret (same as `CLOUD_BRAIN_SECRET`).
+* Optional **CF API token** — needed ONLY if you turn **Gateway Authentication ON** for your gateway
+  (create a token with the *AI Gateway: Run* permission; the app sends it as `cf-aig-authorization`).
+  Keep auth OFF → leave this empty.
 * Tap **Test connection** → should say *Connected: ok*.
+
+### 5b. New: Cloudflare AI (Workers AI) provider
+
+The provider list now has a **Cloudflare AI** entry — Cloudflare's own models, billed to your CF
+account (no extra provider key needed):
+
+* Provider → **Cloudflare AI** → API key = a Cloudflare API token with **Workers AI: Run** permission.
+* Endpoint is prefilled with `{account_id}` and is auto-replaced with the Account ID from the
+  Cloud Brain settings at runtime.
+* Default model `@cf/meta/llama-3.3-70b-instruct-fp8-fast` (supports tool calls); tap *fetch models*
+  for the live list.
 
 ### 6. Route automation through the brain
 

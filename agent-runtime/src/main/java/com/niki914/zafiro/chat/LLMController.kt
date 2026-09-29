@@ -264,6 +264,7 @@ object LLMController {
             retryMaxAttempts = llmConfig.retryMaxAttempts,
             thinkingLevel = llmConfig.thinkingLevel.takeIf(String::isNotBlank)
                 ?.let(ThinkingLevel::fromWire),
+            extraHeaders = llmConfig.extraHeaders,
         )
         // 会话实例按协议重建；协议切换 = close + 新实例，但树经 restore 延续
         // （P1 #3：export 当前树给新协议实例，会话 id + 历史跨 Provider 保留）
@@ -729,6 +730,7 @@ object LLMController {
                         retryMaxAttempts = rt.retryMaxAttempts,
                         thinkingLevel = rt.thinkingLevel.takeIf(String::isNotBlank)
                             ?.let(ThinkingLevel::fromWire),
+                        extraHeaders = rt.extraHeaders,
                     ),
                 )
             }
@@ -870,6 +872,7 @@ object LLMController {
             supportsImages = imageLoader != null && config.supportsImages
             thinkingLevel = config.thinkingLevel
             proxy = config.proxy
+            headers = config.extraHeaders
         }
     }
 

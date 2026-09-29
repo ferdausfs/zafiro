@@ -46,6 +46,7 @@ private const val GATEWAY_ENABLE_ROW_ID = "cloud.gateway.enable"
 private const val GATEWAY_ACCOUNT_ROW_ID = "cloud.gateway.account"
 private const val GATEWAY_NAME_ROW_ID = "cloud.gateway.name"
 private const val GATEWAY_SLUG_ROW_ID = "cloud.gateway.slug"
+private const val GATEWAY_TOKEN_ROW_ID = "cloud.gateway.token"
 private const val BRAIN_ENABLE_ROW_ID = "cloud.brain.enable"
 private const val BRAIN_URL_ROW_ID = "cloud.brain.url"
 private const val BRAIN_SECRET_ROW_ID = "cloud.brain.secret"
@@ -99,6 +100,10 @@ fun CloudflareSettingsContent() {
         ?.let { "••••" + it.takeLast(2) }
         ?: ""
 
+    val cfTokenDisplay = settings.cfApiToken.takeIf { it.isNotBlank() }
+        ?.let { "••••" + it.takeLast(2) }
+        ?: ""
+
     val spec = SettingsPageSpec(
         description = null,
         sections = listOf(
@@ -124,6 +129,11 @@ fun CloudflareSettingsContent() {
                         id = GATEWAY_SLUG_ROW_ID,
                         title = stringResource(R.string.cloud_gateway_custom_slug),
                         currentState = settings.customProviderSlug,
+                    ),
+                    SettingsRowSpec.Navigation(
+                        id = GATEWAY_TOKEN_ROW_ID,
+                        title = stringResource(R.string.cloud_gateway_cf_token),
+                        currentState = cfTokenDisplay,
                     ),
                 ),
             ),
@@ -192,6 +202,7 @@ fun CloudflareSettingsContent() {
                         GATEWAY_ACCOUNT_ROW_ID -> editField("accountId", settings.accountId)
                         GATEWAY_NAME_ROW_ID -> editField("gatewayName", settings.gatewayName)
                         GATEWAY_SLUG_ROW_ID -> editField("customProviderSlug", settings.customProviderSlug)
+                        GATEWAY_TOKEN_ROW_ID -> editField("cfApiToken", settings.cfApiToken)
                         BRAIN_URL_ROW_ID -> editField("workerUrl", settings.workerUrl)
                         BRAIN_SECRET_ROW_ID -> editField("brainSecret", settings.brainSecret)
                         BRAIN_TEST_ROW_ID -> {
@@ -247,6 +258,7 @@ fun CloudflareSettingsContent() {
                 "accountId" -> settings.copy(accountId = value.trim())
                 "gatewayName" -> settings.copy(gatewayName = value.trim())
                 "customProviderSlug" -> settings.copy(customProviderSlug = value.trim())
+                "cfApiToken" -> settings.copy(cfApiToken = value.trim())
                 "workerUrl" -> settings.copy(workerUrl = value.trim().trimEnd('/'))
                 "brainSecret" -> settings.copy(brainSecret = value.trim())
                 else -> settings
@@ -262,6 +274,7 @@ private fun fieldTitle(field: String): String = when (field) {
     "accountId" -> stringResource(R.string.cloud_gateway_account_id)
     "gatewayName" -> stringResource(R.string.cloud_gateway_name)
     "customProviderSlug" -> stringResource(R.string.cloud_gateway_custom_slug)
+    "cfApiToken" -> stringResource(R.string.cloud_gateway_cf_token)
     "workerUrl" -> stringResource(R.string.cloud_brain_worker_url)
     "brainSecret" -> stringResource(R.string.cloud_brain_secret)
     else -> field
@@ -272,6 +285,7 @@ private fun fieldHint(field: String): String = when (field) {
     "accountId" -> stringResource(R.string.cloud_hint_account_id)
     "gatewayName" -> stringResource(R.string.cloud_hint_gateway_name)
     "customProviderSlug" -> stringResource(R.string.cloud_hint_custom_slug)
+    "cfApiToken" -> stringResource(R.string.cloud_hint_cf_token)
     "workerUrl" -> stringResource(R.string.cloud_hint_worker_url)
     "brainSecret" -> stringResource(R.string.cloud_hint_secret)
     else -> ""

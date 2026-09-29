@@ -22,7 +22,7 @@ class XRepoRuntimeGateway(
         val memories = repo.agents.memoriesFor(agentId)
         return RuntimeLlmConfig(
             provider = active?.provider.orEmpty(),
-            endpoint = applyGateway(active?.provider.orEmpty(), active?.endpoint.orEmpty()),
+            endpoint = resolveEndpoint(active?.provider.orEmpty(), active?.endpoint.orEmpty()),
             // vault 引用优先：key 明文只在运行时内存中出现，不落盘
             apiKey = active?.resolveApiKey().orEmpty(),
             model = active?.model.orEmpty(),
@@ -34,6 +34,7 @@ class XRepoRuntimeGateway(
             memories = memories,
             idleTimeoutSeconds = repo.llmIdleTimeoutSeconds().takeIf { it > 0L },
             retryMaxAttempts = repo.llmRetryMaxAttempts(),
+            extraHeaders = gatewayHeaders(),
         )
     }
 
@@ -42,7 +43,7 @@ class XRepoRuntimeGateway(
         return repo.fallback.resolveConfigs(activeConfigId = doc.activeId).map { saved ->
             RuntimeLlmConfig(
                 provider = saved.provider,
-                endpoint = applyGateway(saved.provider, saved.endpoint),
+                endpoint = resolveEndpoint(saved.provider, saved.endpoint),
                 apiKey = saved.resolveApiKey().orEmpty(),
                 model = saved.model,
                 protocol = saved.protocol,
@@ -53,6 +54,7 @@ class XRepoRuntimeGateway(
                 thinkingLevel = saved.thinkingLevel,
                 idleTimeoutSeconds = repo.llmIdleTimeoutSeconds().takeIf { it > 0L },
                 retryMaxAttempts = repo.llmRetryMaxAttempts(),
+                extraHeaders = gatewayHeaders(),
             )
         }.filter { it.apiKey.isNotBlank() || it.endpoint.isNotBlank() }
     }
@@ -139,18 +141,31 @@ class XRepoRuntimeGateway(
     }
 
     /**
-     * AI Gateway 端点改写：网关设置完备且 provider 可映射时返回网关 URL，
-     * 否则原样直连（Ollama / 未收录 provider / 已是网关地址均不改写）。
+     * 端点解析：先做 {account_id} 占位符替换（Workers AI 直连），
+     * 再做 AI Gateway 改写（网关设置完备且 provider 可映射时），否则原样。
      */
-    private suspend fun applyGateway(providerId: String, endpoint: String): String {
+    private suspend fun resolveEndpoint(providerId: String, endpoint: String): String {
         val cloud = repo.cloud.settings()
-        if (!cloud.gatewayReady()) return endpoint
+        val substituted = CloudflareGateway.substituteAccountId(endpoint, cloud.accountId)
+        if (!cloud.gatewayReady()) return substituted
         return CloudflareGateway.gatewayEndpointFor(
             providerId = providerId,
             customSlug = cloud.customProviderSlug,
-            originalEndpoint = endpoint,
+            originalEndpoint = substituted,
             accountId = cloud.accountId,
             gatewayName = cloud.gatewayName,
-        ) ?: endpoint
+        ) ?: substituted
+    }
+
+    /**
+     * Gateway 鉴权头：Gateway Authentication 开启（cf-aig-authorization）时由
+     * 宿主注入；token 未填 = 空表（网关鉴权保持关闭也可用）。
+     */
+    private suspend fun gatewayHeaders(): Map<String, String> {
+        val cloud = repo.cloud.settings()
+        if (!cloud.gatewayReady()) return emptyMap()
+        val token = cloud.cfApiToken.trim()
+        if (token.isEmpty()) return emptyMap()
+        return mapOf(CloudflareGateway.AIG_AUTH_HEADER to "Bearer $token")
     }
 }

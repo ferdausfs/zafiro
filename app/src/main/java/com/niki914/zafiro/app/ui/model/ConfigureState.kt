@@ -6,6 +6,7 @@ import com.niki914.logging.Logger
 import com.niki914.okia.message.ThinkingLevel
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
+import com.niki914.zafiro.repo.CloudflareGateway
 import com.niki914.zafiro.repo.LlmConfigsDocument
 import com.niki914.zafiro.repo.ModelCatalogApi
 import com.niki914.zafiro.repo.SavedLlmConfig
@@ -172,7 +173,13 @@ internal data class ConfigureViewModelDependencies(
             deleteConfig = { XRepo.llmConfigs.delete(it) },
             setActiveConfig = { XRepo.llmConfigs.setActive(it) },
             fetchModelCatalog = { modelsUrl, apiKey, protocol ->
-                ModelCatalogApi.fetch(modelsUrl, apiKey, protocol)
+                // Workers AI 等端点里的 {account_id} 占位符在此替换（模型目录请求）
+                val accountId = runCatching { XRepo.cloud.settings().accountId }.getOrDefault("")
+                ModelCatalogApi.fetch(
+                    CloudflareGateway.substituteAccountId(modelsUrl, accountId),
+                    apiKey,
+                    protocol,
+                )
             },
         )
     }

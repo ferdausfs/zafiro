@@ -652,6 +652,7 @@
     <string name="cloud_gateway_account_id">Account ID</string>
     <string name="cloud_gateway_name">Nombre del Gateway</string>
     <string name="cloud_gateway_custom_slug">Slug de proveedor personalizado</string>
+    <string name="cloud_gateway_cf_token">Token de API de CF (opcional)</string>
     <string name="cloud_brain_enable">Automatizar vía Cloud Brain</string>
     <string name="cloud_brain_worker_url">URL del Worker</string>
     <string name="cloud_brain_secret">Secreto compartido</string>
@@ -664,6 +665,7 @@
     <string name="cloud_hint_account_id">ID de cuenta de Cloudflare (32 hex)</string>
     <string name="cloud_hint_gateway_name">Nombre del Gateway creado en el panel de Cloudflare</string>
     <string name="cloud_hint_custom_slug">Slug para proveedores no mapeados; vacío = mapeo integrado</string>
+    <string name="cloud_hint_cf_token">Necesario si la autenticación de Gateway está activada (permiso AI Gateway: Run); también es la API key del proveedor Cloudflare AI</string>
     <string name="cloud_hint_worker_url">https://zafiro-cloud-brain.tu-subdominio.workers.dev</string>
     <string name="cloud_hint_secret">CLOUD_BRAIN_SECRET configurado al desplegar el Worker</string>
 </resources>

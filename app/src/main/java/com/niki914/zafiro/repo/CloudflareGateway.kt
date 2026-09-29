@@ -17,6 +17,12 @@ object CloudflareGateway {
     /** AI Gateway 基础主机。 */
     const val GATEWAY_HOST: String = "gateway.ai.cloudflare.com"
 
+    /** Gateway Authentication 开启时必需的鉴权请求头（值 = Bearer <CF API Token>）。 */
+    const val AIG_AUTH_HEADER: String = "cf-aig-authorization"
+
+    /** Workers AI 端点中的 Account ID 占位符（运行时由设置里的 Account ID 替换）。 */
+    const val ACCOUNT_PLACEHOLDER: String = "{account_id}"
+
     /** app provider id → AI Gateway slug。未收录的 provider 走 customProviderSlug。 */
     private val providerSlugs: Map<String, String> = mapOf(
         "openai" to "openai",
@@ -82,5 +88,18 @@ object CloudflareGateway {
     ): String? {
         val slug = providerSlug(providerId, customSlug) ?: return null
         return rewriteEndpoint(originalEndpoint, accountId, gatewayName, slug)
+    }
+
+    /**
+     * 把端点中的 {account_id} 占位符替换为真实 Account ID。
+     * 无占位符或 accountId 为空时原样返回（Workers AI 直连端点使用；
+     * 同一逻辑也适用于模型目录 /models 地址）。
+     */
+    fun substituteAccountId(endpoint: String, accountId: String): String {
+        val original = endpoint.trim()
+        if (!original.contains(ACCOUNT_PLACEHOLDER)) return endpoint
+        val account = accountId.trim()
+        if (account.isEmpty()) return endpoint
+        return original.replace(ACCOUNT_PLACEHOLDER, account)
     }
 }

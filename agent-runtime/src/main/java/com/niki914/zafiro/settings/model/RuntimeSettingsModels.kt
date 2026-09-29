@@ -20,6 +20,8 @@ data class RuntimeLlmConfig(
     val retryMaxAttempts: Int = 3,
     /** ThinkingLevel.wireValue；空串 = 不发送思考字段（Provider 默认行为）。 */
     val thinkingLevel: String = "",
+    /** 宿主注入的网关级请求头（如 cf-aig-authorization）；默认空 = 不注入。 */
+    val extraHeaders: Map<String, String> = emptyMap(),
 )
 
 enum class RuntimeAgentMemoryMode {

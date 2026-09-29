@@ -31,6 +31,9 @@ data class CloudflareSettings(
     val workerUrl: String = "",
     /** Worker 共享密钥（部署时以 CLOUD_BRAIN_SECRET 注入）。 */
     val brainSecret: String = "",
+    /** CF API Token（可选）：Gateway Authentication 开启时以 cf-aig-authorization 发送；
+     *  也是 Cloudflare AI (Workers AI) provider 的 API Key。 */
+    val cfApiToken: String = "",
 ) {
     /** AI Gateway 是否具备改写条件。 */
     fun gatewayReady(): Boolean =
@@ -51,6 +54,7 @@ internal object CloudflareSettingsCodec {
     private const val BRAIN_ENABLED_KEY = "brainEnabled"
     private const val WORKER_URL_KEY = "workerUrl"
     private const val BRAIN_SECRET_KEY = "brainSecret"
+    private const val CF_API_TOKEN_KEY = "cfApiToken"
 
     fun parse(json: String): CloudflareSettings {
         val obj = parseObject(json)
@@ -62,6 +66,7 @@ internal object CloudflareSettingsCodec {
             brainEnabled = obj.string(BRAIN_ENABLED_KEY) == "true",
             workerUrl = obj.string(WORKER_URL_KEY).trim().trimEnd('/'),
             brainSecret = obj.string(BRAIN_SECRET_KEY).trim(),
+            cfApiToken = obj.string(CF_API_TOKEN_KEY).trim(),
         )
     }
 
@@ -75,6 +80,7 @@ internal object CloudflareSettingsCodec {
                 BRAIN_ENABLED_KEY to JsonPrimitive(settings.brainEnabled),
                 WORKER_URL_KEY to JsonPrimitive(settings.workerUrl),
                 BRAIN_SECRET_KEY to JsonPrimitive(settings.brainSecret),
+                CF_API_TOKEN_KEY to JsonPrimitive(settings.cfApiToken),
             )
         ).toString()
     }
@@ -106,6 +112,7 @@ class CloudflareApi internal constructor(
         customProviderSlug = customProviderSlug.trim(),
         workerUrl = workerUrl.trim().trimEnd('/'),
         brainSecret = brainSecret.trim(),
+        cfApiToken = cfApiToken.trim(),
     )
 
     private fun storeId(): String = StoreDescriptorRegistry.CLOUD_SETTINGS_ID

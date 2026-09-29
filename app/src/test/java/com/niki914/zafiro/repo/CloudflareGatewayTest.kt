@@ -149,4 +149,30 @@ class CloudflareGatewayTest {
             ),
         )
     }
+
+    // ------------------------------------------------ substituteAccountId
+
+    @Test
+    fun substitute_replacesPlaceholderWithTrimmedAccount() {
+        assertEquals(
+            "https://api.cloudflare.com/client/v4/accounts/acc123/ai/v1/chat/completions",
+            CloudflareGateway.substituteAccountId(
+                "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1/chat/completions",
+                " acc123 ",
+            ),
+        )
+    }
+
+    @Test
+    fun substitute_noopWithoutPlaceholder() {
+        val direct = "https://api.cloudflare.com/client/v4/accounts/real/ai/v1/chat/completions"
+        assertEquals(direct, CloudflareGateway.substituteAccountId(direct, "acc"))
+        assertEquals("", CloudflareGateway.substituteAccountId("", "acc"))
+    }
+
+    @Test
+    fun substitute_keepsPlaceholderWhenAccountBlank() {
+        val withPlaceholder = "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1/models"
+        assertEquals(withPlaceholder, CloudflareGateway.substituteAccountId(withPlaceholder, "  "))
+    }
 }

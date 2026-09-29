@@ -44,6 +44,7 @@ object ProviderSpecs {
         OpenRouterSpec,
         DeepSeekSpec,
         GoogleSpec,
+        CloudflareSpec,
         GroqSpec,
         MistralSpec,
         XaiSpec,
@@ -268,6 +269,25 @@ private data object GoogleSpec : ProviderSpec {
     // Google 品牌走官方 OpenAI 兼容端点，如实展示 openai 协议（不提供 gemini-native）
     override val defaultProtocol: String = "openai-chat-completions"
     override val iconRes: Int = R.drawable.gemini
+    override val tintIcon: Boolean = false
+    override val visualTokens: ProviderVisualTokens = ProviderVisualTokens(
+        button = ProviderButtonTokens(),
+    )
+}
+
+private data object CloudflareSpec : ProviderSpec {
+    override val id: String = "cloudflare"
+    override val brandName: String = "Cloudflare AI"
+
+    // Workers AI 的 OpenAI 兼容端点；{account_id} 占位符由 Cloudflare 设置里的
+    // Account ID 在运行时自动替换（CloudflareGateway.substituteAccountId）。
+    // API Key = Cloudflare API Token（Workers AI 权限）。
+    override val officialEndpoint: String =
+        "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1/chat/completions"
+    override val exampleModelId: String = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+    override val allowsCustomEndpointInNewConfig: Boolean = true
+    override val defaultProtocol: String = "openai-chat-completions"
+    override val iconRes: Int = R.drawable.cloudflare
     override val tintIcon: Boolean = false
     override val visualTokens: ProviderVisualTokens = ProviderVisualTokens(
         button = ProviderButtonTokens(),
