@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  v2.1.2+ TokenVault fix（API ≤ 30 全量备份规则）：
+  Keystore 加密的 vault prefs 不进备份——密钥不会随备份还原，
+  还原条目只会成为解不开的幽灵数据（运行时空 key → 远端 401）。
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="zafiro_token_vault.xml" />
+</full-backup-content>

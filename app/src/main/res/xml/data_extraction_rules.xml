@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  v2.1.2+ TokenVault fix: AndroidKeyStore 密钥永远不会被备份/还原，
+  而 zafiro_token_vault prefs 里的条目是 Keystore 加密的——还原回来的
+  条目必然解不开（幽灵条目），运行时就会拿不到 API key → 远端 401。
+  因此把 vault prefs 排除出云端备份 / 设备迁移（API 31+ 规则）。
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="zafiro_token_vault.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="zafiro_token_vault.xml" />
+    </device-transfer>
+</data-extraction-rules>

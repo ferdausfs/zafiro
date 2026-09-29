@@ -31,6 +31,14 @@ import javax.crypto.spec.GCMParameterSpec
  *
  * Agent 通过 RuntimeSettingsGateway（vault_token 工具）访问：list 只暴露 name/note，
  * get 按精确名称取值。UI 通过 [reveal]/[value] 取值。
+ *
+ * 修复记录（v2.1.2+）：AndroidKeyStore 密钥在 卸载重装/系统迁移/部分 OEM OTA 后会丢失，
+ * 而加密条目（SharedPreferences）可能经 Auto Backup 还原回来——两者一旦不配对，
+ * value() 解密失败返回 null，运行时就会以「空 API key」发出请求，远端表现为
+ * 401 Unauthorized（AiGatewayError 2009），用户侧看似「key 没变却失效」。
+ * 现在检测该状态（[keyLostDetected] / [health]）并输出可行动的 ERROR 日志，
+ * 且本 prefs 文件已排除出备份（见 data_extraction_rules / full_backup_content），
+ * 避免还原出「看起来存在但永远解不开」的幽灵条目。
  */
 object TokenVault {
 
@@ -61,6 +69,37 @@ object TokenVault {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val mutex = Mutex()
     private var appContext: Context? = null
+
+    /**
+     * Keystore 密钥与加密条目失配（解密必然失败）的状态位。
+     * 置位后所有既有条目都不可解密；只能由用户重新录入 token 恢复。
+     */
+    @Volatile
+    var keyLostDetected: Boolean = false
+        private set
+
+    /** Vault 健康状态快照（UI 可用于提示「需要重新录入 token」）。 */
+    data class VaultHealth(
+        val entries: Int,
+        val keyLost: Boolean,
+    )
+
+    suspend fun health(): VaultHealth = withContext(Dispatchers.IO) {
+        VaultHealth(entries = readDocument().tokens.size, keyLost = keyLostDetected)
+    }
+
+    private fun markKeyLost(reason: String) {
+        if (!keyLostDetected) {
+            keyLostDetected = true
+            Logger.e(
+                LOG_TAG,
+                "KEYSTORE KEY LOST: encrypted token entries exist but the AndroidKeyStore " +
+                    "key cannot decrypt them ($reason). Requests using vault-referenced API keys " +
+                    "will go out UNAUTHENTICATED and fail with remote 401. Recovery: re-enter the " +
+                    "affected tokens in Settings → Tokens (or re-save the API key in the config).",
+            )
+        }
+    }
 
     internal fun init(context: Context) {
         if (appContext == null) {
@@ -133,14 +172,17 @@ object TokenVault {
     suspend fun value(name: String): String? = withContext(Dispatchers.IO) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return@withContext null
+        context() // 确保 appContext 就绪，避免 init 前读到空文档误判为「不存在」
         val entry = readDocument().tokens.firstOrNull { it.name == trimmed }
             ?: return@withContext null
         try {
             decryptOrThrow(context(), entry.valueCt)
         } catch (error: Throwable) {
             // Keystore 密钥被清（卸载重装/系统还原）等：不可解密按不存在处理，
-            // 绝不让坏条目崩溃调用方。
+            // 绝不让坏条目崩溃调用方——但必须把「key 丢失」暴露出来，
+            // 否则调用方拿到 null → 空 key 发请求 → 远端 401，用户无从排查。
             Logger.w(LOG_TAG, "decrypt failed name=$trimmed reason=${error.message}")
+            markKeyLost(error.message.orEmpty())
             null
         }
     }
@@ -170,6 +212,12 @@ object TokenVault {
     private fun secretKey(context: Context): SecretKey {
         val keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER).apply { load(null) }
         (keyStore.getKey(KEY_ALIAS, null) as? SecretKey)?.let { return it }
+        // 密钥不存在但库里已有条目：意味着条目是用「已丢失的旧密钥」加密的。
+        // 这里仍需生成新密钥（让新 put 可用），但必须留下显式痕迹，
+        // 严禁静默吞掉——静默正是「401 疑似 key 失效」难排查的根源。
+        if (readDocument().tokens.isNotEmpty()) {
+            markKeyLost("keystore key alias '$KEY_ALIAS' missing while ${readDocument().tokens.size} entries exist")
+        }
         val generator = KeyGenerator.getInstance(
             KeyProperties.KEY_ALGORITHM_AES,
             KEYSTORE_PROVIDER,

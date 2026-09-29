@@ -16,6 +16,22 @@ import com.niki914.zafiro.settings.model.RuntimeToolValidation
 class XRepoRuntimeGateway(
     private val repo: XRepo = XRepo,
 ) : RuntimeSettingsGateway {
+
+    private suspend fun resolveApiKeyOrWarn(config: SavedLlmConfig, context: String): String? {
+        val resolved = config.resolveApiKey()
+        if (resolved.isNullOrBlank() && config.apiKeyVaultRef.isNotBlank()) {
+            // 凭证库引用存在但解不出明文（Keystore 密钥丢失/条目损坏）：
+            // 不能静默返回空 key 发请求——那会以远端 401 的形式难倒用户。
+            com.niki914.logging.Logger.e(
+                LOG_TAG,
+                "LLM config '${config.name}' (${context}) has vault ref '${config.apiKeyVaultRef}' " +
+                    "but the key cannot be decrypted. The request would go out UNAUTHENTICATED " +
+                    "and fail with remote 401. Fix: Settings → Tokens re-enter the key.",
+            )
+        }
+        return resolved
+    }
+
     override suspend fun readLlmConfig(agentId: String): RuntimeLlmConfig {
         val doc = repo.llmConfigs.document()
         val active = doc.activeConfig()
@@ -24,7 +40,7 @@ class XRepoRuntimeGateway(
             provider = active?.provider.orEmpty(),
             endpoint = resolveEndpoint(active?.provider.orEmpty(), active?.endpoint.orEmpty()),
             // vault 引用优先：key 明文只在运行时内存中出现，不落盘
-            apiKey = active?.resolveApiKey().orEmpty(),
+            apiKey = active?.let { resolveApiKeyOrWarn(it, "active") }.orEmpty(),
             model = active?.model.orEmpty(),
             protocol = active?.protocol.orEmpty(),
             supportsImages = active?.supportsImages ?: false,
@@ -44,7 +60,7 @@ class XRepoRuntimeGateway(
             RuntimeLlmConfig(
                 provider = saved.provider,
                 endpoint = resolveEndpoint(saved.provider, saved.endpoint),
-                apiKey = saved.resolveApiKey().orEmpty(),
+                apiKey = resolveApiKeyOrWarn(saved, "fallback").orEmpty(),
                 model = saved.model,
                 protocol = saved.protocol,
                 supportsImages = saved.supportsImages,
@@ -167,5 +183,9 @@ class XRepoRuntimeGateway(
         val token = cloud.cfApiToken.trim()
         if (token.isEmpty()) return emptyMap()
         return mapOf(CloudflareGateway.AIG_AUTH_HEADER to "Bearer $token")
+    }
+
+    private companion object {
+        const val LOG_TAG = "niki914_nexus_XRepoGateway"
     }
 }
