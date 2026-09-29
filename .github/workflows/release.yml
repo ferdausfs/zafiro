@@ -28,7 +28,13 @@ jobs:
           python-version: '3.11'   # Chaquopy buildPython requirement
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        # android-actions/setup-android@v3 开始安装已从 SDK 仓库移除的 'tools' 包而失败
+        # （"Failed to find package 'tools'"，2026-09-29 起）。GitHub ubuntu-latest 镜像
+        # 已预装 Android SDK（ANDROID_HOME），这里只需接受许可证即可。
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --list | head -5
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
