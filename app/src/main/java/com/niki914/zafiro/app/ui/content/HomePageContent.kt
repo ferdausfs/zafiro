@@ -1,6 +1,9 @@
 package com.niki914.zafiro.app.ui.content
 
 import android.content.ClipData
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -115,6 +118,9 @@ import com.niki914.zafiro.app.ui.nav.TopBarActionSpec
 import com.niki914.zafiro.chat.agentic.accessibility.ScreenControlConsent
 import com.niki914.zafiro.chat.agentic.shell.ToolPermissionCoordinator
 import com.niki914.zafiro.repo.UpdateCheckHolder
+import com.niki914.zafiro.repo.UpdateCheckResult
+import com.niki914.zafiro.repo.UpdateInstallState
+import com.niki914.zafiro.repo.UpdateInstaller
 import com.niki914.zafiro.repo.XRepo
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -364,27 +370,113 @@ fun HomePageContent(
     )
 
     val updateCheckResult by UpdateCheckHolder.result.collectAsState()
+    val installState by UpdateInstaller.state.collectAsState()
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
     val remoteVersion = updateCheckResult?.remoteVersion.orEmpty()
-    val releaseUrl = updateCheckResult?.releaseUrl.orEmpty()
-    ConfirmationLiquidDialog(
-        visible = updateCheckResult?.hasUpdate == true,
-        onDismissRequest = { UpdateCheckHolder.dismiss() },
-        title = stringResource(R.string.update_dialog_title),
-        text = stringResource(R.string.update_dialog_text, remoteVersion),
-        positiveButtonText = stringResource(R.string.update_dialog_confirm),
-        negativeButtonText = stringResource(R.string.update_dialog_cancel),
-        onPositiveClick = {
-            uriHandler.openUri(releaseUrl)
-            UpdateCheckHolder.dismiss()
-        },
-        onNegativeClick = { UpdateCheckHolder.dismiss() },
-        dismissOnBackgroundTap = false,
-    )
+
+    when (val install = installState) {
+        is UpdateInstallState.Downloading -> {
+            val pct = if (install.totalBytes > 0) {
+                (install.receivedBytes * 100 / install.totalBytes).toInt()
+            } else 0
+            LiquidDialog(
+                visible = true,
+                onDismissRequest = { },   // 下载中不允许误触关闭
+                dismissOnBackgroundTap = false,
+                title = {
+                    Text(
+                        text = stringResource(R.string.update_dialog_title),
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                },
+                text = {
+                    Text(
+                        text = stringResource(R.string.update_dialog_downloading, pct),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                },
+                actions = {
+                    MaterialTintLiquidButton(
+                        text = stringResource(R.string.update_dialog_cancel_download),
+                        onClick = { UpdateInstaller.cancel() },
+                        modifier = Modifier.fillMaxWidth(),
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    )
+                },
+            )
+        }
+        is UpdateInstallState.Failed -> {
+            ConfirmationLiquidDialog(
+                visible = true,
+                onDismissRequest = { UpdateCheckHolder.dismiss() },
+                title = stringResource(R.string.update_dialog_fail_title),
+                text = stringResource(install.reasonRes),
+                positiveButtonText = stringResource(R.string.update_dialog_retry),
+                negativeButtonText = stringResource(R.string.update_dialog_cancel),
+                onPositiveClick = {
+                    launchInAppUpdate(context, updateCheckResult, uriHandler)
+                },
+                onNegativeClick = { UpdateCheckHolder.dismiss() },
+                dismissOnBackgroundTap = false,
+            )
+        }
+        else -> {
+            // Idle / Installing：Installing 时系统安装器接管（其确认弹窗在上层），本弹窗静默让位
+            ConfirmationLiquidDialog(
+                visible = updateCheckResult?.hasUpdate == true,
+                onDismissRequest = { UpdateCheckHolder.dismiss() },
+                title = stringResource(R.string.update_dialog_title),
+                text = stringResource(R.string.update_dialog_text, remoteVersion),
+                positiveButtonText = stringResource(R.string.update_dialog_confirm),
+                negativeButtonText = stringResource(R.string.update_dialog_cancel),
+                onPositiveClick = {
+                    launchInAppUpdate(context, updateCheckResult, uriHandler)
+                },
+                onNegativeClick = { UpdateCheckHolder.dismiss() },
+                dismissOnBackgroundTap = false,
+            )
+        }
+    }
 
     ToolPermissionDialog()
 
     ScreenControlConsentDialog()
+}
+
+/**
+ * v2.1.2 in-app 自更新入口：release 里有 APK 直链时走「下载→PackageInstaller」全流程；
+ * 缺 "安装未知应用" 授权时先跳系统设置（用户授权返回后重按一次即生效）；
+ * 无直链（异常 release）才回退浏览器。彻底告别手动 GitHub 下载安装。
+ */
+private fun launchInAppUpdate(
+    context: android.content.Context,
+    result: UpdateCheckResult?,
+    uriHandler: androidx.compose.ui.platform.UriHandler,
+) {
+    if (result?.hasUpdate != true) return
+    val url = result.apkUrl
+    val name = result.apkName
+    if (url.isNullOrBlank() || name.isNullOrBlank()) {
+        result.releaseUrl?.takeIf { it.isNotBlank() }?.let { uriHandler.openUri(it) }
+        UpdateCheckHolder.dismiss()
+        return
+    }
+    if (!context.packageManager.canRequestPackageInstalls()) {
+        context.startActivity(
+            Intent(
+                Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                Uri.parse("package:${context.packageName}"),
+            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+        return
+    }
+    UpdateInstaller.start(context, url, name)
 }
 
 /**

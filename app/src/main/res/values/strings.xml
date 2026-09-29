@@ -371,8 +371,21 @@
     <string name="mcp_error_headers_non_string">请求头的值必须是字符串</string>
     <string name="update_dialog_title">发现新版本</string>
     <string name="update_dialog_text">v%1$s 已发布，建议升级</string>
-    <string name="update_dialog_confirm">前往更新</string>
+    <string name="update_dialog_confirm">立即安装更新</string>
     <string name="update_dialog_cancel">稍后</string>
+    <string name="update_dialog_downloading">正在下载更新… %1$d%%</string>
+    <string name="update_dialog_cancel_download">取消下载</string>
+    <string name="update_dialog_retry">重试</string>
+    <string name="update_need_install_permission">需要「安装未知应用」授权：已打开系统设置，请允许 Zafiro 后重试</string>
+    <string name="update_dialog_fail_title">更新失败</string>
+    <string name="update_dialog_fail_network">下载失败，请检查网络后重试</string>
+    <string name="update_dialog_fail_invalid">安装包异常，请重试；若反复失败请到 GitHub 重新下载</string>
+    <string name="update_dialog_fail_incompatible">签名不一致：请先卸载旧版本一次（数据会清除），再安装新版本</string>
+    <string name="update_dialog_fail_storage">存储空间不足，请清理后重试</string>
+    <string name="update_dialog_fail_conflict">与已安装的其他应用冲突，无法安装</string>
+    <string name="update_dialog_fail_blocked">系统拦截了安装：请在系统设置中允许 Zafiro 安装</string>
+    <string name="update_dialog_fail_aborted">已取消</string>
+    <string name="update_dialog_fail_generic">更新失败，请重试</string>
 
     <!-- Notification strings -->
 

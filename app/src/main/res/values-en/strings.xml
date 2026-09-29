@@ -372,8 +372,21 @@
     <string name="mcp_error_headers_non_string">Header values must be strings</string>
     <string name="update_dialog_title">New Version Available</string>
     <string name="update_dialog_text">v%1$s is now available. Upgrade to get the latest features and fixes.</string>
-    <string name="update_dialog_confirm">Update</string>
+    <string name="update_dialog_confirm">Install update</string>
     <string name="update_dialog_cancel">Later</string>
+    <string name="update_dialog_downloading">Downloading update… %1$d%%</string>
+    <string name="update_dialog_cancel_download">Cancel download</string>
+    <string name="update_dialog_retry">Retry</string>
+    <string name="update_need_install_permission">The "Install unknown apps" permission is required: system settings will open, allow Zafiro and try again</string>
+    <string name="update_dialog_fail_title">Update Failed</string>
+    <string name="update_dialog_fail_network">Download failed. Check your network and try again</string>
+    <string name="update_dialog_fail_invalid">The downloaded file looks corrupted. Retry; if it keeps failing, download the APK from GitHub</string>
+    <string name="update_dialog_fail_incompatible">Signature mismatch: uninstall the old version once (data will be erased), then install the new APK</string>
+    <string name="update_dialog_fail_storage">Not enough storage. Free up space and try again</string>
+    <string name="update_dialog_fail_conflict">Conflicts with another installed app</string>
+    <string name="update_dialog_fail_blocked">Install was blocked: allow Zafiro to install apps in system settings</string>
+    <string name="update_dialog_fail_aborted">Cancelled</string>
+    <string name="update_dialog_fail_generic">Update failed, please retry</string>
 
     <!-- Notification strings -->
 

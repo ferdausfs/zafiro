@@ -1,5 +1,6 @@
 package com.niki914.zafiro.repo
 
+import android.os.Build
 import com.niki914.xposed.api.util.xTry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,12 +12,17 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import okhttp3.Request
 
 data class UpdateCheckResult(
     val hasUpdate: Boolean,
     val remoteVersion: String?,
     val releaseUrl: String?,
+    /** 与设备 ABI 匹配的 APK 直链（in-app 更新用）；null = 仅能跳浏览器 */
+    val apkUrl: String? = null,
+    val apkName: String? = null,
+    val apkSizeBytes: Long = 0,
 )
 
 object UpdateCheckHolder {
@@ -46,10 +52,12 @@ private object UpdateCheckApi {
     private val client = SharedHttp.client
     private val json = Json { ignoreUnknownKeys = true }
 
+    // v2.1.2: 分发渠道 = 用户自己的 fork（此前检查上游 niki914/zafiro，
+    // fork 的 release 永远检测不到，导致每次都要手动去 GitHub 下载安装）
     private const val GITHUB_API_LATEST =
-        "https://api.github.com/repos/niki914/zafiro/releases/latest"
+        "https://api.github.com/repos/ferdausfs/zafiro/releases/latest"
     private const val GITHUB_API_LATEST_ANY =
-        "https://api.github.com/repos/niki914/zafiro/releases?per_page=1"
+        "https://api.github.com/repos/ferdausfs/zafiro/releases?per_page=1"
 
     private val semverRe = Regex("""(\d+\.\d+\.\d+)""")
 
@@ -89,10 +97,27 @@ private object UpdateCheckApi {
         if (!isNewer(remoteVersion, currentVersion)) return null
 
         val releaseUrl = obj["html_url"]?.jsonPrimitive?.content.orEmpty()
+
+        // 解析 assets，选出与本机 ABI 匹配的 APK（失败不阻塞更新提示，退回浏览器路径）
+        val apks = (obj["assets"] as? JsonArray)
+            ?.mapNotNull { it as? JsonObject }
+            ?.mapNotNull { asset ->
+                val name = asset["name"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                val url = asset["browser_download_url"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                val size = asset["size"]?.jsonPrimitive?.longOrNull ?: 0L
+                Triple(name, url, size)
+            }
+            .orEmpty()
+        val picked = pickApkAssetName(Build.SUPPORTED_ABIS.toList(), apks.map { it.first })
+        val chosen = apks.firstOrNull { it.first == picked }
+
         return UpdateCheckResult(
             hasUpdate = true,
             remoteVersion = remoteVersion,
             releaseUrl = releaseUrl,
+            apkUrl = chosen?.second,
+            apkName = chosen?.first,
+            apkSizeBytes = chosen?.third ?: 0,
         )
     }
 
@@ -128,4 +153,18 @@ private object UpdateCheckApi {
 
     private fun noUpdate() =
         UpdateCheckResult(hasUpdate = false, remoteVersion = null, releaseUrl = null)
+}
+
+/**
+ * 按设备 ABI 从 release assets 里选 APK：arm64 设备优先 *arm64*.apk（体积小一半），
+ * 其余（32 位 / 未知 ABI）用 *universal*.apk；两者皆缺时退回任意 .apk。
+ * 纯函数，单测覆盖。
+ */
+internal fun pickApkAssetName(abis: List<String>, assetNames: List<String>): String? {
+    val apks = assetNames.filter { it.endsWith(".apk", ignoreCase = true) }
+    if (apks.isEmpty()) return null
+    val preferArm64 = abis.any { it.equals("arm64-v8a", ignoreCase = true) }
+    val keyword = if (preferArm64) "arm64" else "universal"
+    return apks.firstOrNull { it.contains(keyword, ignoreCase = true) }
+        ?: apks.first()
 }

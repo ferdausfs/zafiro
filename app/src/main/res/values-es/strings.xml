@@ -372,8 +372,21 @@
     <string name="mcp_error_headers_non_string">El valor del encabezado debe ser una cadena de texto</string>
     <string name="update_dialog_title">Nueva versión disponible</string>
     <string name="update_dialog_text">v%1$s ya está disponible. Se recomienda actualizar.</string>
-    <string name="update_dialog_confirm">Actualizar</string>
+    <string name="update_dialog_confirm">Instalar actualización</string>
     <string name="update_dialog_cancel">Ahora no</string>
+    <string name="update_dialog_downloading">Descargando actualización… %1$d%%</string>
+    <string name="update_dialog_cancel_download">Cancelar descarga</string>
+    <string name="update_dialog_retry">Reintentar</string>
+    <string name="update_need_install_permission">Se necesita el permiso "Instalar apps desconocidas": se abrirá la configuración, permite Zafiro e inténtalo de nuevo</string>
+    <string name="update_dialog_fail_title">Error al actualizar</string>
+    <string name="update_dialog_fail_network">Descarga fallida. Revisa la red e inténtalo de nuevo</string>
+    <string name="update_dialog_fail_invalid">El archivo descargado parece dañado. Reintenta; si sigue fallando, descarga el APK desde GitHub</string>
+    <string name="update_dialog_fail_incompatible">Firma incompatible: desinstala la versión antigua una vez (se borrarán los datos) e instala la nueva</string>
+    <string name="update_dialog_fail_storage">Espacio insuficiente. Libera espacio e inténtalo de nuevo</string>
+    <string name="update_dialog_fail_conflict">Conflicto con otra aplicación instalada</string>
+    <string name="update_dialog_fail_blocked">Instalación bloqueada: permite que Zafiro instale apps en la configuración</string>
+    <string name="update_dialog_fail_aborted">Cancelado</string>
+    <string name="update_dialog_fail_generic">Error al actualizar, inténtalo de nuevo</string>
 
     <!-- Notification strings -->
 

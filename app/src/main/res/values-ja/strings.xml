@@ -371,8 +371,21 @@
     <string name="mcp_error_headers_non_string">ヘッダーの値は文字列である必要があります</string>
     <string name="update_dialog_title">新しいバージョンが利用可能です</string>
     <string name="update_dialog_text">v%1$s がリリースされました。アップデートを推奨します</string>
-    <string name="update_dialog_confirm">アップデートへ</string>
+    <string name="update_dialog_confirm">アップデートをインストール</string>
     <string name="update_dialog_cancel">後で</string>
+    <string name="update_dialog_downloading">アップデートをダウンロード中… %1$d%%</string>
+    <string name="update_dialog_cancel_download">ダウンロードをキャンセル</string>
+    <string name="update_dialog_retry">再試行</string>
+    <string name="update_need_install_permission">「提供元不明のアプリ」の許可が必要です：設定を開くので、Zafiro を許可してから再試行してください</string>
+    <string name="update_dialog_fail_title">アップデート失敗</string>
+    <string name="update_dialog_fail_network">ダウンロードに失敗しました。ネットワークを確認して再試行してください</string>
+    <string name="update_dialog_fail_invalid">ダウンロードファイルが破損している可能性があります。再試行しても失敗する場合は GitHub から APK を再ダウンロードしてください</string>
+    <string name="update_dialog_fail_incompatible">署名が一致しません：旧バージョンを一度アンインストールして（データは消去されます）、新バージョンをインストールしてください</string>
+    <string name="update_dialog_fail_storage">ストレージ容量が不足しています。空き容量を確保して再試行してください</string>
+    <string name="update_dialog_fail_conflict">インストール済みの別アプリと競合しています</string>
+    <string name="update_dialog_fail_blocked">インストールがブロックされました：設定で Zafiro のインストールを許可してください</string>
+    <string name="update_dialog_fail_aborted">キャンセルされました</string>
+    <string name="update_dialog_fail_generic">アップデートに失敗しました。再試行してください</string>
 
     <!-- Notification strings -->
 
