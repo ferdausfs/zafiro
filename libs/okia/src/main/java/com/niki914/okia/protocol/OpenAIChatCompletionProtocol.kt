@@ -1,6 +1,8 @@
 package com.niki914.okia.protocol
 
 import com.niki914.okia.ImageLoader
+import com.niki914.okia.error.LLMError
+import com.niki914.okia.error.LLMErrorCode
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
@@ -87,6 +89,27 @@ class OpenAIChatCompletionProtocol(
             }
             if (chunk == null) {
                 emit(ProtocolEvent.Error(SerializationException("chunk is not a json object")))
+                failed = true
+                return@collect
+            }
+
+            // OpenRouter / 网关在流中段直接推 {"error": {...}}（无 choices）：
+            // 限流、上游 provider 错误、moderation。此前被静默跳过，
+            // 流结束时以 "stream ended without finish_reason" 误报为不可重试 Parse。
+            val streamError = chunk["error"]
+            if (streamError != null && streamError !is JsonNull) {
+                val message = when (streamError) {
+                    is JsonObject -> (streamError["message"] as? JsonPrimitive)?.contentOrNull
+                        ?: streamError.toString()
+                    is JsonPrimitive -> streamError.content
+                    else -> streamError.toString()
+                }
+                emit(
+                    ProtocolEvent.Error(
+                        LLMError(LLMErrorCode.Transport, message),
+                        retryable = true
+                    )
+                )
                 failed = true
                 return@collect
             }
@@ -385,7 +408,14 @@ class OpenAIChatCompletionProtocol(
 
     private suspend fun finishStream(state: StreamState, emit: suspend (ProtocolEvent) -> Unit) {
         when (state.finishReason) {
-            null -> emit(ProtocolEvent.Error(IllegalStateException("stream ended without finish_reason")))
+            // 流提前断开（网络 / provider 超时 / 未处理的 error 事件）→
+            // 传输层临时错误，可重试；此前误报为不可重试 Parse。
+            null -> emit(
+                ProtocolEvent.Error(
+                    LLMError(LLMErrorCode.Transport, "stream ended without finish_reason"),
+                    retryable = true
+                )
+            )
             "stop", "end" -> emit(
                 ProtocolEvent.Completed(
                     state.usage,
@@ -410,7 +440,12 @@ class OpenAIChatCompletionProtocol(
             }
 
             else -> emit(
-                ProtocolEvent.Error(IllegalStateException("unsupported finish_reason: ${state.finishReason}"))
+                ProtocolEvent.Error(
+                    LLMError(
+                        LLMErrorCode.Parse,
+                        "unsupported finish_reason: ${state.finishReason}"
+                    )
+                )
             )
         }
     }
