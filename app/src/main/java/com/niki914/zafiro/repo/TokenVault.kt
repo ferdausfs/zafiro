@@ -172,7 +172,9 @@ object TokenVault {
     suspend fun value(name: String): String? = withContext(Dispatchers.IO) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return@withContext null
-        context() // 确保 appContext 就绪，避免 init 前读到空文档误判为「不存在」
+        // Kotlin 2.2 起不能把 context() 写成独立表达式（会被解析为空的 context 参数列表），
+        // 赋值形式强制按函数调用解析：确保 appContext 就绪，避免 init 前读到空文档
+        val warmContext = context()
         val entry = readDocument().tokens.firstOrNull { it.name == trimmed }
             ?: return@withContext null
         try {
