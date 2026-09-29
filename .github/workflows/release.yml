@@ -39,23 +39,13 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Decode signing keystore
-        env:
-          KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
-        run: |
-          mkdir -p packing
-          printf '%s' "$KEYSTORE_BASE64" | base64 -d > packing/nexus_release.jks
-
       - name: Build signed release APK
-        env:
-          STORE_PW: ${{ secrets.SIGNING_STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
-          KEY_PW: ${{ secrets.SIGNING_KEY_PASSWORD }}
-        run: |
-          ./gradlew assembleRelease --no-daemon --stacktrace \
-            -PRELEASE_STORE_PASSWORD="$STORE_PW" \
-            -PRELEASE_KEY_ALIAS="$KEY_ALIAS" \
-            -PRELEASE_KEY_PASSWORD="$KEY_PW"
+        # 签名直接使用仓库已提交的 keystore/zafiro-release.jks + gradle.properties
+        # （RELEASE_STORE_FILE / RELEASE_STORE_PASSWORD / RELEASE_KEY_ALIAS / RELEASE_KEY_PASSWORD）。
+        # 此前用 secrets 的 -P 覆盖：secrets 未配置时传空串，反而把正确密码覆盖成空，
+        # 导致 "Failed to read key  from store ... keystore password was incorrect"。
+        # 历史 release 全部为本地构建（CI 从未成功过），沿用同一 keystore 保证签名一致。
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Resolve version name
         id: version
