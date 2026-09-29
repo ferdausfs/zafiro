@@ -744,4 +744,31 @@ class OpenAIChatCompletionProtocolTest {
         )
         assertEquals("none", body(request)["reasoning_effort"]!!.jsonPrimitive.content)
     }
+
+    // ── 流中段 error 事件 / 无 finish_reason（OpenRouter 兼容回归） ──────
+
+    @Test
+    fun midStreamErrorChunkEmitsRetryableErrorWithProviderMessage() {
+        val events = runBlocking {
+            parse(
+                """{"choices":[{"delta":{"content":"hel"}}]}""",
+                """{"error":{"message":"Provider rate limit exceeded","code":429}}""",
+            )
+        }
+        val error = events.filterIsInstance<ProtocolEvent.Error>().single()
+        assertTrue(error.retryable)
+        assertEquals("Provider rate limit exceeded", error.cause.message)
+        // 错误前已收到的文本 delta 不丢
+        assertTrue(events.any { it is ProtocolEvent.TextDelta && it.text == "hel" })
+    }
+
+    @Test
+    fun streamWithoutFinishReasonIsRetryableTransportError() {
+        val events = runBlocking {
+            parse("""{"choices":[{"delta":{"content":"partial"}}]}""")
+        }
+        val error = events.filterIsInstance<ProtocolEvent.Error>().single()
+        assertTrue(error.retryable)
+        assertEquals("stream ended without finish_reason", error.cause.message)
+    }
 }
