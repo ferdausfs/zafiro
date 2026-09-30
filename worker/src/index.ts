@@ -11,6 +11,7 @@
  *   POST /v1/ai/chat/completions         (OpenAI-compatible Workers AI proxy)
  *   GET|POST /v1/trade/signal            (TradingAgents-style trading signal)
  *   GET|POST /v1/trade/backtest          (point-in-time backtest-lite)
+ *   GET  /v1/trade/forex                 (all 7 forex majors quick scan)
  *   GET  /v1/trade/memory?symbol=        (signal memory log + track record)
  *   POST /v1/trade/memory/resolve        (resolve matured signals now)
  */
@@ -19,6 +20,7 @@ import type { BrainEnv } from "./llm";
 import { err, ok, type CloudTaskSubmit } from "./proto";
 import { handleTradeSignal, resolveDueSignals } from "./trade";
 import { handleTradeBacktest } from "./backtest";
+import { handleForexScan } from "./forex";
 
 export { AgentSession } from "./brain";
 export { TradeMemory } from "./tradeMemory";
@@ -100,6 +102,10 @@ export default {
 
     if (path === "/v1/trade/backtest" && (request.method === "GET" || request.method === "POST")) {
       return handleTradeBacktest(request, env);
+    }
+
+    if (path === "/v1/trade/forex" && request.method === "GET") {
+      return handleForexScan(request, env);
     }
 
     if (path === "/v1/trade/memory" && request.method === "GET") {
