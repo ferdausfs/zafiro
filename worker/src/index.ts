@@ -10,11 +10,15 @@
  *   GET  /v1/ai/models                   (Workers AI model catalogue)
  *   POST /v1/ai/chat/completions         (OpenAI-compatible Workers AI proxy)
  *   GET|POST /v1/trade/signal            (TradingAgents-style trading signal)
+ *   GET|POST /v1/trade/backtest          (point-in-time backtest-lite)
+ *   GET  /v1/trade/memory?symbol=        (signal memory log + track record)
+ *   POST /v1/trade/memory/resolve        (resolve matured signals now)
  */
 
 import type { BrainEnv } from "./llm";
 import { err, ok, type CloudTaskSubmit } from "./proto";
-import { handleTradeSignal } from "./trade";
+import { handleTradeSignal, resolveDueSignals } from "./trade";
+import { handleTradeBacktest } from "./backtest";
 
 export { AgentSession } from "./brain";
 
@@ -93,6 +97,24 @@ export default {
       return handleTradeSignal(request, env);
     }
 
+    if (path === "/v1/trade/backtest" && (request.method === "GET" || request.method === "POST")) {
+      return handleTradeBacktest(request, env);
+    }
+
+    if (path === "/v1/trade/memory" && request.method === "GET") {
+      const symbol = url.searchParams.get("symbol") || "";
+      const limit = Number(url.searchParams.get("limit") || "20") || 20;
+      const stub = env.TRADE_MEMORY.get(env.TRADE_MEMORY.idFromName("global"));
+      const hist = await stub.fetch("https://do.internal/history?symbol=" + encodeURIComponent(symbol) + "&limit=" + limit);
+      const stats = await stub.fetch("https://do.internal/stats?symbol=" + encodeURIComponent(symbol));
+      return ok({ history: await hist.json(), stats: await stats.json() });
+    }
+
+    if (path === "/v1/trade/memory/resolve" && request.method === "POST") {
+      const n = await resolveDueSignals(env);
+      return ok({ resolved: n });
+    }
+
     if (path === "/v1/tasks" && request.method === "POST") {
       let submit: CloudTaskSubmit;
       try {
@@ -133,6 +155,11 @@ export default {
     }
 
     return err(404, "not found");
+  },
+
+  // Daily cron: resolve matured trading signals against realized returns.
+  async scheduled(event: ScheduledController, env: BrainEnv, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(resolveDueSignals(env));
   },
 } satisfies ExportedHandler<BrainEnv>;
 
