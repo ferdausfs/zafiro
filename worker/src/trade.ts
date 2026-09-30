@@ -178,15 +178,18 @@ export async function aiJson(
 
 // ---------------------------------------------------------------- memory DO
 
-function memStub(env: BrainEnv): DurableObjectStub {
+function memStub(env: BrainEnv): DurableObjectStub | null {
+  if (!env.TRADE_MEMORY) return null;
   return env.TRADE_MEMORY.get(env.TRADE_MEMORY.idFromName("global"));
 }
 
 const DO_BASE = "https://do.internal";
 
 async function memHistory(env: BrainEnv, symbol: string, limit: number): Promise<TradeSignalRecord[]> {
+  const stub = memStub(env);
+  if (!stub) return [];
   try {
-    const res = await memStub(env).fetch(
+    const res = await stub.fetch(
       DO_BASE + "/history?symbol=" + encodeURIComponent(symbol) + "&limit=" + limit,
     );
     if (!res.ok) return [];
@@ -197,8 +200,10 @@ async function memHistory(env: BrainEnv, symbol: string, limit: number): Promise
 }
 
 async function memStats(env: BrainEnv, symbol: string): Promise<Record<string, unknown> | null> {
+  const stub = memStub(env);
+  if (!stub) return null;
   try {
-    const res = await memStub(env).fetch(
+    const res = await stub.fetch(
       DO_BASE + "/stats?symbol=" + encodeURIComponent(symbol),
     );
     if (!res.ok) return null;
@@ -209,8 +214,10 @@ async function memStats(env: BrainEnv, symbol: string): Promise<Record<string, u
 }
 
 async function memSave(env: BrainEnv, rec: Record<string, unknown>): Promise<void> {
+  const stub = memStub(env);
+  if (!stub) return;
   try {
-    await memStub(env).fetch(DO_BASE + "/save", {
+    await stub.fetch(DO_BASE + "/save", {
       method: "POST",
       body: JSON.stringify(rec),
     });
@@ -226,8 +233,10 @@ async function memOutcome(
   hit: boolean | null,
   outcome_note: string,
 ): Promise<void> {
+  const stub = memStub(env);
+  if (!stub) return;
   try {
-    await memStub(env).fetch(DO_BASE + "/outcome", {
+    await stub.fetch(DO_BASE + "/outcome", {
       method: "POST",
       body: JSON.stringify({ id, realized_pct, hit, outcome_note }),
     });
@@ -237,8 +246,10 @@ async function memOutcome(
 }
 
 async function memDue(env: BrainEnv): Promise<TradeSignalRecord[]> {
+  const stub = memStub(env);
+  if (!stub) return [];
   try {
-    const res = await memStub(env).fetch(DO_BASE + "/due?now=" + Date.now());
+    const res = await stub.fetch(DO_BASE + "/due?now=" + Date.now());
     if (!res.ok) return [];
     return (await res.json()) as TradeSignalRecord[];
   } catch {
@@ -695,7 +706,7 @@ export async function handleTradeSignal(
     return err(502, (e as Error).message);
   }
   const indicators = computeIndicators(chart.candles);
-  const [headlines, fundamentals, memHistory, memStats] = await Promise.all([
+  const [headlines, fundamentals, pastSignals, trackRecord] = await Promise.all([
     fetchNews(symbol),
     fetchFundamentals(symbol),
     memHistory(env, symbol, 8),
@@ -712,7 +723,7 @@ export async function handleTradeSignal(
   }
 
   // 4. trader + risk manager, with memory injected
-  const memoryContext = buildMemoryContext(memHistory, memStats);
+  const memoryContext = buildMemoryContext(pastSignals, trackRecord);
   let trade: Record<string, unknown>;
   try {
     trade = await runTrader(env, brief, analyst, memoryContext, risk, position);
@@ -745,8 +756,8 @@ export async function handleTradeSignal(
     news_headlines: headlines,
     memory: {
       resolved_now: resolvedNow,
-      track_record: memStats,
-      recent: memHistory.slice(0, 5),
+      track_record: trackRecord,
+      recent: pastSignals.slice(0, 5),
     },
     analyst_briefing: analyst,
     signal: trade,
