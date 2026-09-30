@@ -9,15 +9,26 @@ enabled = true
 # One Durable Object per agent session: keeps conversation state while the
 # phone is offline and drives the LLM loop between phone action rounds.
 [durable_objects]
-bindings = [{ name = "AGENT_SESSION", class_name = "AgentSession" }]
+bindings = [
+  { name = "AGENT_SESSION", class_name = "AgentSession" },
+  { name = "TRADE_MEMORY", class_name = "TradeMemory" },
+]
 
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["AgentSession"]
 
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["TradeMemory"]
+
 # Workers AI binding: the worker can run Cloudflare models with no API token.
 [ai]
 binding = "AI"
+
+# Daily cron: resolve matured trade signals (21:30 UTC = 03:30 BST).
+[triggers]
+crons = ["30 21 * * *"]
 
 [vars]
 BRAIN_BASE_URL = "https://zafiro-cloud-brain.umuhammadiswa.workers.dev/v1/ai"
