@@ -321,6 +321,18 @@ object XRepo {
         }
     }
 
+    suspend fun llmContextBudgetTokens(): Int {
+        return AppStateSettingsCodec.parse(readJson(StoreDescriptorRegistry.APP_STATE_ID))
+            .llmContextBudgetTokens
+    }
+
+    suspend fun setLlmContextBudgetTokens(value: Int) {
+        updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
+            val current = AppStateSettingsCodec.parse(json)
+            AppStateSettingsCodec.encode(current.copy(llmContextBudgetTokens = value))
+        }
+    }
+
     suspend fun setLoadLastConversationOnStartup(value: Boolean) {
         updateJson(StoreDescriptorRegistry.APP_STATE_ID) { json ->
             val current = AppStateSettingsCodec.parse(json)

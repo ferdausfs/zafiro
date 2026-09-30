@@ -50,6 +50,7 @@ class XRepoRuntimeGateway(
             memories = memories,
             idleTimeoutSeconds = repo.llmIdleTimeoutSeconds().takeIf { it > 0L },
             retryMaxAttempts = repo.llmRetryMaxAttempts(),
+            contextBudgetTokens = repo.llmContextBudgetTokens(),
             extraHeaders = gatewayHeaders(),
         )
     }
@@ -70,6 +71,7 @@ class XRepoRuntimeGateway(
                 thinkingLevel = saved.thinkingLevel,
                 idleTimeoutSeconds = repo.llmIdleTimeoutSeconds().takeIf { it > 0L },
                 retryMaxAttempts = repo.llmRetryMaxAttempts(),
+                contextBudgetTokens = repo.llmContextBudgetTokens(),
                 extraHeaders = gatewayHeaders(),
             )
         }.filter { it.apiKey.isNotBlank() || it.endpoint.isNotBlank() }

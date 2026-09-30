@@ -454,6 +454,9 @@
     <string name="ui_settings_general_idle_timeout">応答アイドルタイムアウト</string>
     <string name="ui_settings_general_idle_timeout_summary">サーバーが長時間無応答のときにターンを終了します</string>
     <string name="ui_settings_general_idle_timeout_off">タイムアウトなし</string>
+    <string name="ui_settings_general_context_budget">コンテキスト予算</string>
+    <string name="ui_settings_general_context_budget_summary">予算を超えると古いメッセージを要約に圧縮し、トークンを節約します（0 = オフ）</string>
+    <string name="ui_settings_general_context_budget_off">オフ</string>
     <string name="ui_settings_general_retry_attempts">自動リトライ回数</string>
     <string name="ui_settings_general_retry_summary">リクエスト失敗後の自動リトライ</string>
     <string name="ui_settings_general_keep_screen_on">回答中は画面をオンに保つ</string>

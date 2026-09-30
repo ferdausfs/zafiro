@@ -18,6 +18,8 @@ data class RuntimeLlmConfig(
     val idleTimeoutSeconds: Long? = 60L,
     /** 传输层自动重试次数。 */
     val retryMaxAttempts: Int = 3,
+    /** 上下文预算（history token 上限）；<=0 = 不压缩（Context Budget 特性）。 */
+    val contextBudgetTokens: Int = 8000,
     /** ThinkingLevel.wireValue；空串 = 不发送思考字段（Provider 默认行为）。 */
     val thinkingLevel: String = "",
     /** 宿主注入的网关级请求头（如 cf-aig-authorization）；默认空 = 不注入。 */

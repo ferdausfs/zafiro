@@ -36,6 +36,7 @@ private const val LOAD_LAST_ROW_ID = "general.load_last"
 private const val ALWAYS_SHOW_ACTIONS_ROW_ID = "general.always_show_message_actions"
 private const val IDLE_TIMEOUT_ROW_ID = "general.idle_timeout"
 private const val RETRY_ATTEMPTS_ROW_ID = "general.retry_attempts"
+private const val CONTEXT_BUDGET_ROW_ID = "general.context_budget"
 private const val KEEP_SCREEN_ON_ROW_ID = "general.keep_screen_on"
 
 private const val LANGUAGE_TAG_ZH_CN = "zh-CN"
@@ -75,9 +76,11 @@ fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
     var showLanguageDialog by rememberSaveable { mutableStateOf(false) }
     var idleTimeoutSeconds by rememberSaveable { mutableStateOf(60L) }
     var retryMaxAttempts by rememberSaveable { mutableStateOf(3) }
+    var contextBudgetTokens by rememberSaveable { mutableStateOf(8000) }
     var keepScreenOn by rememberSaveable { mutableStateOf(true) }
     var showIdleTimeoutDialog by rememberSaveable { mutableStateOf(false) }
     var showRetryDialog by rememberSaveable { mutableStateOf(false) }
+    var showContextBudgetDialog by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         runCatching {
@@ -86,6 +89,7 @@ fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
             alwaysShowMessageActions = XRepo.alwaysShowMessageActions()
             idleTimeoutSeconds = XRepo.llmIdleTimeoutSeconds()
             retryMaxAttempts = XRepo.llmRetryMaxAttempts()
+            contextBudgetTokens = XRepo.llmContextBudgetTokens()
             keepScreenOn = XRepo.keepScreenOn()
         }.onFailure {
             Logger.w("niki914_nexus_GeneralSettings", "load failed ${it.message}")
@@ -133,6 +137,11 @@ fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
                         title = stringResource(R.string.ui_settings_general_retry_attempts),
                         currentState = retryAttemptsLabel(retryMaxAttempts),
                     ),
+                    SettingsRowSpec.Navigation(
+                        id = CONTEXT_BUDGET_ROW_ID,
+                        title = stringResource(R.string.ui_settings_general_context_budget),
+                        currentState = contextBudgetLabel(contextBudgetTokens),
+                    ),
                     SettingsRowSpec.Toggle(
                         id = KEEP_SCREEN_ON_ROW_ID,
                         title = stringResource(R.string.ui_settings_general_keep_screen_on),
@@ -156,6 +165,8 @@ fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
                         showIdleTimeoutDialog = true
                     } else if (action.id == RETRY_ATTEMPTS_ROW_ID) {
                         showRetryDialog = true
+                    } else if (action.id == CONTEXT_BUDGET_ROW_ID) {
+                        showContextBudgetDialog = true
                     }
 
                 is SettingsRowAction.ToggleChanged ->
@@ -240,6 +251,23 @@ fun GeneralSettingsContent(onPush: (ZafiroPage) -> Unit = {}) {
             scope.launch { XRepo.setLlmRetryMaxAttempts(option) }
         },
     )
+
+    val contextBudgetOptions = contextBudgetOptions()
+    SingleChoiceLiquidDialog(
+        visible = showContextBudgetDialog,
+        onDismissRequest = { showContextBudgetDialog = false },
+        title = stringResource(R.string.ui_settings_general_context_budget),
+        hint = stringResource(R.string.ui_settings_general_context_budget_summary),
+        options = contextBudgetOptions,
+        selectedId = contextBudgetTokens.toString(),
+        optionId = { it.tokens.toString() },
+        optionLabel = { it.label },
+        onSelect = { option ->
+            contextBudgetTokens = option.tokens
+            showContextBudgetDialog = false
+            scope.launch { XRepo.setLlmContextBudgetTokens(option.tokens) }
+        },
+    )
 }
 
 @Composable
@@ -284,3 +312,28 @@ private fun idleTimeoutOptions(): List<IdleTimeoutOption> {
 private fun retryAttemptsLabel(attempts: Int): String = attempts.toString()
 
 private fun retryAttemptsOptions(): List<Int> = listOf(0, 1, 2, 3, 5)
+
+data class ContextBudgetOption(
+    /** 持久化值：0 = 不压缩。 */
+    val tokens: Int,
+    val label: String,
+)
+
+@Composable
+private fun contextBudgetLabel(tokens: Int): String {
+    return contextBudgetOptions().firstOrNull { it.tokens == tokens }?.label
+        ?: "$tokens"
+}
+
+@Composable
+private fun contextBudgetOptions(): List<ContextBudgetOption> {
+    val offLabel = stringResource(R.string.ui_settings_general_context_budget_off)
+    return listOf(
+        ContextBudgetOption(tokens = 0, label = offLabel),
+        ContextBudgetOption(tokens = 2000, label = "2k tokens"),
+        ContextBudgetOption(tokens = 4000, label = "4k tokens"),
+        ContextBudgetOption(tokens = 8000, label = "8k tokens"),
+        ContextBudgetOption(tokens = 16000, label = "16k tokens"),
+        ContextBudgetOption(tokens = 32000, label = "32k tokens"),
+    )
+}

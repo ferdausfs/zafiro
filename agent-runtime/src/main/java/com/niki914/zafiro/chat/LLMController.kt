@@ -262,6 +262,7 @@ object LLMController {
             supportsImages = llmConfig.supportsImages,
             idleTimeoutSeconds = llmConfig.idleTimeoutSeconds,
             retryMaxAttempts = llmConfig.retryMaxAttempts,
+            contextBudgetTokens = llmConfig.contextBudgetTokens,
             thinkingLevel = llmConfig.thinkingLevel.takeIf(String::isNotBlank)
                 ?.let(ThinkingLevel::fromWire),
             extraHeaders = llmConfig.extraHeaders,
@@ -285,6 +286,9 @@ object LLMController {
             // T2b：MCP 服务器配置进 OKIA（McpDiscovery 发现后注册进同一 toolRegistry）
             mcpServers = toOkiaMcpServers(resolvedTools.mcpServers)
         }
+        // 上下文预算热更新：压缩钩子读 controller 级 volatile（非 OKIA 配置项），
+        // 实例复用时也跟随设置变化
+        contextBudgetTokens = configWithoutRuntimePrompt.contextBudgetTokens
         // T2a：本地工具注册（enabled 集合全量重建；inline 回合内工具由
         // registerCustomPyToolNow 注册，随下次 refresh 由持久化版本接管）
         syncLocalTools(resolvedTools)
@@ -728,6 +732,7 @@ object LLMController {
                         supportsImages = rt.supportsImages,
                         idleTimeoutSeconds = rt.idleTimeoutSeconds,
                         retryMaxAttempts = rt.retryMaxAttempts,
+                        contextBudgetTokens = rt.contextBudgetTokens,
                         thinkingLevel = rt.thinkingLevel.takeIf(String::isNotBlank)
                             ?.let(ThinkingLevel::fromWire),
                         extraHeaders = rt.extraHeaders,
@@ -861,6 +866,8 @@ object LLMController {
             model = config.model
             hooks += killToolResourcesHook
             hooks += fixIncompleteToolCallsHook
+            // 上下文压缩在孤儿工具调用修复之后：先补结果，再压缩（顺序即执行顺序）
+            hooks += contextCompactorHook
             // null = 不超时（General Settings 提供「不限时」选项）
             idleTimeoutSeconds = config.idleTimeoutSeconds ?: NO_IDLE_TIMEOUT_SECONDS
             retryPolicy = RetryPolicy(maxAttempts = config.retryMaxAttempts)
@@ -1003,6 +1010,38 @@ object LLMController {
         if (signature == mcpFailureSignature) return null
         mcpFailureSignature = signature
         return buildMcpFailureNotice(failed)
+    }
+
+    /**
+     * 上下文压缩钩子（Feature: Context Budget）：每次请求序列化前，若历史
+     * 超出预算则压缩为「锚点 + digest + 近期尾部」。任何异常回落原历史
+     * （hook 抛错会令整回合 HookFailed 失败，这里绝不抛）。
+     * 预算从设置热更新（refresh() 写 volatile）；<=0 = 不压缩。
+     */
+    @Volatile
+    private var contextBudgetTokens: Int = ContextCompactor.DEFAULT_BUDGET_TOKENS
+
+    private val contextCompactorHook = object : Hooks {
+        override suspend fun beforeSerialization(request: SerializationHolder) {
+            val budget = contextBudgetTokens
+            if (budget <= 0) return
+            val history = request.history
+            val before = ContextCompactor.estimateTokens(history)
+            if (before <= budget) return
+            val compacted = runCatching { ContextCompactor.compact(history, budget) }
+                .getOrElse { failure ->
+                    Logger.w(LOG_TAG, "context compact failed, sending full history: ${failure.message}")
+                    return
+                }
+            if (compacted != history) {
+                request.write(request.snapshot, compacted, "context_compactor")
+                Logger.i(
+                    LOG_TAG,
+                    "context compacted tokens=$before->${ContextCompactor.estimateTokens(compacted)} " +
+                        "messages=${history.size}->${compacted.size}"
+                )
+            }
+        }
     }
 
     /**

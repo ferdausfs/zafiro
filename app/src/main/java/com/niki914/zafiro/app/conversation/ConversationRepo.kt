@@ -6,6 +6,8 @@ import com.niki914.okia.conversation.ConversationEntry
 import com.niki914.okia.conversation.SessionSnapshot
 import com.niki914.okia.message.Message
 import com.niki914.zafiro.app.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.util.UUID
 
@@ -260,18 +262,21 @@ object ConversationRepo {
         }.conversationDao()
     }
 
-    /** Room 行 → OKIA 会话树快照（leafId null 由 OKIA 恢复为最后一条，§5.3）。 */
-    private suspend fun readSnapshot(id: String, storedLeafId: String?): SessionSnapshot {
-        val entries = dao().listEntries(id).mapNotNull { entity ->
-            entity.toConversationEntry()
+    /** Room 行 → OKIA 会话树快照（leafId null 由 OKIA 恢复为最后一条，§5.3）。
+     *  解码跑在 IO：超长会话（数 MB message_json）在 Main 解码会 ANR/掉帧
+     *  （#crash-long-chat：恢复会话时中途被杀的根因之一）。 */
+    private suspend fun readSnapshot(id: String, storedLeafId: String?): SessionSnapshot =
+        withContext(Dispatchers.IO) {
+            val entries = dao().listEntries(id).mapNotNull { entity ->
+                entity.toConversationEntry()
+            }
+            SessionSnapshot(
+                id = id,
+                leafId = storedLeafId,
+                version = SNAPSHOT_VERSION,
+                entries = entries,
+            )
         }
-        return SessionSnapshot(
-            id = id,
-            leafId = storedLeafId,
-            version = SNAPSHOT_VERSION,
-            entries = entries,
-        )
-    }
 
     private fun ConversationEntryEntity.toConversationEntry(): ConversationEntry? {
         val message = runCatching {

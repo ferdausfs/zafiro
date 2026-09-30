@@ -460,6 +460,9 @@
     <string name="ui_settings_general_idle_timeout">响应空闲超时</string>
     <string name="ui_settings_general_idle_timeout_summary">服务器长时间无响应时终止回合</string>
     <string name="ui_settings_general_idle_timeout_off">不超时</string>
+    <string name="ui_settings_general_context_budget">上下文预算</string>
+    <string name="ui_settings_general_context_budget_summary">超出预算时自动把较早的对话压缩为摘要，节省 token（0 = 不压缩）</string>
+    <string name="ui_settings_general_context_budget_off">不压缩</string>
     <string name="ui_settings_general_retry_attempts">自动重试次数</string>
     <string name="ui_settings_general_retry_summary">请求失败后的自动重试</string>
     <string name="ui_settings_general_keep_screen_on">回答期间保持屏幕常亮</string>

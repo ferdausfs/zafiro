@@ -455,6 +455,9 @@
     <string name="ui_settings_general_idle_timeout">Tiempo de inactividad</string>
     <string name="ui_settings_general_idle_timeout_summary">Termina el turno si el servidor no responde</string>
     <string name="ui_settings_general_idle_timeout_off">Sin límite</string>
+    <string name="ui_settings_general_context_budget">Presupuesto de contexto</string>
+    <string name="ui_settings_general_context_budget_summary">Condensa los mensajes antiguos en un resumen al superar el límite para ahorrar tokens (0 = desactivado)</string>
+    <string name="ui_settings_general_context_budget_off">Desactivado</string>
     <string name="ui_settings_general_retry_attempts">Reintentos automáticos</string>
     <string name="ui_settings_general_retry_summary">Reintentos automáticos tras un error de solicitud</string>
     <string name="ui_settings_general_keep_screen_on">Mantener la pantalla encendida al responder</string>

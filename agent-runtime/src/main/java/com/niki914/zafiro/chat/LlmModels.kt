@@ -20,6 +20,8 @@ data class ResolvedLlmConfig(
     val supportsImages: Boolean = false,
     val idleTimeoutSeconds: Long? = 60L,
     val retryMaxAttempts: Int = 3,
+    /** 上下文预算（history token 上限）；<=0 = 不压缩。 */
+    val contextBudgetTokens: Int = ContextCompactor.DEFAULT_BUDGET_TOKENS,
     /** 思考强度；null = 不发送思考字段（Provider 默认行为）。 */
     val thinkingLevel: ThinkingLevel? = null,
     /** 宿主注入的网关级请求头（如 cf-aig-authorization）。 */
