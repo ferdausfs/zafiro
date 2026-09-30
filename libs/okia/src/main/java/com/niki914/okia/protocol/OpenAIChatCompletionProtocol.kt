@@ -105,7 +105,6 @@ class OpenAIChatCompletionProtocol(
                     else -> streamError.toString()
                 }
                 emit(
-                emit(
                     ProtocolEvent.Error(
                         LLMError(LLMErrorCode.Transport, message),
                         retryable = true
@@ -413,7 +412,7 @@ class OpenAIChatCompletionProtocol(
             // 传输层临时错误，可重试；此前误报为不可重试 Parse。
             null -> emit(
                 ProtocolEvent.Error(
-                    LLMError(LLMErrorCode.Transport, "stream ended without finish_reason"),
+                    IllegalStateException("stream ended without finish_reason"),
                     retryable = true
                 )
             )
