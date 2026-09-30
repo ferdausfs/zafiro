@@ -158,12 +158,13 @@ export async function handleTradeBacktest(
     if (!at || at.idx < 30) continue; // need warmup for indicators
     const future = priceAtOrAfter(dMs + horizon * 86400_000);
     if (future === null) continue;
+    const futurePrice: number = future;
     jobs.push({
       dateMs: dMs,
       upto: candles.slice(0, at.idx + 1),
       ind: computeIndicators(candles.slice(0, at.idx + 1)),
       price: at.price,
-      future,
+      future: futurePrice,
     });
   }
   if (jobs.length === 0) return err(400, "not enough history before start date");
