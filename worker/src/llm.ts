@@ -17,6 +17,8 @@ export interface BrainEnv {
   TAVILY_API_KEY?: string;
   CLOUD_BRAIN_SECRET?: string;
   AGENT_SESSION: DurableObjectNamespace;
+  /** Memory log for the trading agent (signals + hit/miss outcomes). */
+  TRADE_MEMORY?: DurableObjectNamespace;
 }
 
 const DEFAULT_BASE_URL = "https://api.openai.com/v1";
