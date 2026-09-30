@@ -63,7 +63,7 @@ export default {
       if (!model.startsWith("@cf/")) {
         return err(400, "model must be a @cf/ Workers AI model id");
       }
-      const input: Record<string, unknown> = { messages: body.messages };
+      const input: Record<string, unknown> = { messages: sanitizeMessages(body.messages) };
       if (typeof body.max_tokens === "number") input.max_tokens = body.max_tokens;
       if (typeof body.temperature === "number") input.temperature = body.temperature;
       // function calling: forward OpenAI-style tool definitions + choice so the
@@ -134,6 +134,35 @@ function isAuthorized(request: Request, env: BrainEnv): boolean {
   const header = request.headers.get("authorization") || "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
   return token.length > 0 && timingSafeEqual(token, expected);
+}
+
+/**
+ * Workers AI validates `messages[].content` against a strict string schema:
+ * `null` (OpenAI's convention for an assistant message that only carries
+ * tool_calls) and multimodal content arrays are both rejected. Normalise every
+ * message to a plain string so multi-turn tool loops work end to end.
+ */
+function sanitizeMessages(messages: unknown): unknown {
+  if (!Array.isArray(messages)) return messages;
+  return messages.map((raw) => {
+    const msg = (raw ?? {}) as Record<string, unknown>;
+    let content = msg.content;
+    if (content === null || content === undefined) {
+      content = "";
+    } else if (Array.isArray(content)) {
+      content = content
+        .map((part) => {
+          if (part && typeof part === "object" && typeof (part as Record<string, unknown>).text === "string") {
+            return (part as Record<string, unknown>).text as string;
+          }
+          return "";
+        })
+        .join("");
+    } else if (typeof content !== "string") {
+      content = String(content);
+    }
+    return { ...msg, content };
+  });
 }
 
 /** Curated Workers AI text models exposed through the proxy. */
