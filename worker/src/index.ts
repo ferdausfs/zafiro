@@ -9,10 +9,12 @@
  *   POST /v1/sessions/:id/cancel
  *   GET  /v1/ai/models                   (Workers AI model catalogue)
  *   POST /v1/ai/chat/completions         (OpenAI-compatible Workers AI proxy)
+ *   GET|POST /v1/trade/signal            (TradingAgents-style trading signal)
  */
 
 import type { BrainEnv } from "./llm";
 import { err, ok, type CloudTaskSubmit } from "./proto";
+import { handleTradeSignal } from "./trade";
 
 export { AgentSession } from "./brain";
 
@@ -85,6 +87,10 @@ export default {
         return sseFromCompletion(completion, body.stream_options);
       }
       return ok(completion);
+    }
+
+    if (path === "/v1/trade/signal" && (request.method === "GET" || request.method === "POST")) {
+      return handleTradeSignal(request, env);
     }
 
     if (path === "/v1/tasks" && request.method === "POST") {
