@@ -53,6 +53,8 @@ export default {
         temperature?: number;
         tools?: unknown;
         tool_choice?: unknown;
+        stream?: boolean;
+        stream_options?: unknown;
       };
       try {
         body = await request.json() as typeof body;
@@ -78,7 +80,11 @@ export default {
       } catch (e) {
         return err(502, `Workers AI error: ${(e as Error).message}`);
       }
-      return ok(normalizeAiResult(out, model));
+      const completion = normalizeAiResult(out, model);
+      if (body.stream === true) {
+        return sseFromCompletion(completion, body.stream_options);
+      }
+      return ok(completion);
     }
 
     if (path === "/v1/tasks" && request.method === "POST") {
@@ -134,6 +140,58 @@ function isAuthorized(request: Request, env: BrainEnv): boolean {
   const header = request.headers.get("authorization") || "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
   return token.length > 0 && timingSafeEqual(token, expected);
+}
+
+/**
+ * The Zafiro client always requests OpenAI-style SSE (`stream: true` +
+ * `stream_options.include_usage`). The Workers AI binding returns a full JSON
+ * completion, so we synthesise a spec-compliant SSE stream from it: one content
+ * delta, one finish delta, optional usage chunk, then [DONE]. Any OpenAI
+ * compatible client (including Okia's SSE parser) can consume this.
+ */
+function sseLine(obj: unknown): string {
+  return `data: ${JSON.stringify(obj)}\n\n`;
+}
+
+function sseFromCompletion(
+  completion: Record<string, unknown>,
+  streamOptions: unknown,
+): Response {
+  const id = typeof completion.id === "string" ? completion.id : "chatcmpl-" + crypto.randomUUID();
+  const model = typeof completion.model === "string" ? completion.model : "";
+  const created = typeof completion.created === "number" ? completion.created : Math.floor(Date.now() / 1000);
+  const choices = Array.isArray(completion.choices) ? completion.choices as Array<Record<string, unknown>> : [];
+  const choice = choices[0] ?? {};
+  const message = (choice.message ?? {}) as Record<string, unknown>;
+
+  const delta: Record<string, unknown> = { role: "assistant" };
+  if (typeof message.content === "string" && message.content.length > 0) {
+    delta.content = message.content;
+  }
+  if (Array.isArray(message.tool_calls) && message.tool_calls.length > 0) {
+    delta.tool_calls = message.tool_calls;
+  }
+
+  let body = sseLine({
+    id, object: "chat.completion.chunk", created, model,
+    choices: [{ index: 0, delta, finish_reason: null }],
+  });
+  body += sseLine({
+    id, object: "chat.completion.chunk", created, model,
+    choices: [{ index: 0, delta: {}, finish_reason: choice.finish_reason ?? "stop" }],
+  });
+  if (streamOptions && typeof streamOptions === "object" &&
+      (streamOptions as Record<string, unknown>).include_usage) {
+    body += sseLine({
+      id, object: "chat.completion.chunk", created, model,
+      choices: [], usage: completion.usage ?? {},
+    });
+  }
+  body += "data: [DONE]\n\n";
+
+  return new Response(body, {
+    headers: { "content-type": "text/event-stream", "cache-control": "no-cache" },
+  });
 }
 
 /**
