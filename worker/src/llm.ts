@@ -6,6 +6,11 @@
 import type { LlmMessage, LlmToolCall, LlmToolDef } from "./proto";
 
 export interface BrainEnv {
+  /** Workers AI binding (wrangler.toml [ai]) — lets the worker run CF models
+   *  without a separate API token. Used by the /v1/ai/* proxy endpoints. */
+  AI?: {
+    run(model: string, input: Record<string, unknown>): Promise<unknown>;
+  };
   BRAIN_BASE_URL?: string;
   BRAIN_API_KEY?: string;
   BRAIN_MODEL?: string;

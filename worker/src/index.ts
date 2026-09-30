@@ -7,6 +7,8 @@
  *   GET  /v1/sessions/:id?cursor=&wait=  (long-poll session snapshot)
  *   POST /v1/sessions/:id/results       {results: [{id, ok, message}]}
  *   POST /v1/sessions/:id/cancel
+ *   GET  /v1/ai/models                   (Workers AI model catalogue)
+ *   POST /v1/ai/chat/completions         (OpenAI-compatible Workers AI proxy)
  */
 
 import type { BrainEnv } from "./llm";
@@ -31,6 +33,39 @@ export default {
 
     if (path === "/v1/health" && request.method === "GET") {
       return ok({ status: "ok", time: new Date().toISOString() });
+    }
+
+    if (path === "/v1/ai/models" && request.method === "GET") {
+      return ok({
+        object: "list",
+        data: AI_MODELS.map((id) => ({ id, object: "model", owned_by: "cloudflare" })),
+      });
+    }
+
+    if (path === "/v1/ai/chat/completions" && request.method === "POST") {
+      if (!env.AI) {
+        return err(500, "Workers AI binding is not configured (add [ai] to wrangler.toml)");
+      }
+      let body: { model?: string; messages?: unknown; max_tokens?: number; temperature?: number };
+      try {
+        body = await request.json() as typeof body;
+      } catch {
+        return err(400, "invalid JSON body");
+      }
+      const model = typeof body.model === "string" ? body.model.trim() : "";
+      if (!model.startsWith("@cf/")) {
+        return err(400, "model must be a @cf/ Workers AI model id");
+      }
+      const input: Record<string, unknown> = { messages: body.messages };
+      if (typeof body.max_tokens === "number") input.max_tokens = body.max_tokens;
+      if (typeof body.temperature === "number") input.temperature = body.temperature;
+      let out: unknown;
+      try {
+        out = await env.AI.run(model, input);
+      } catch (e) {
+        return err(502, `Workers AI error: ${(e as Error).message}`);
+      }
+      return ok(normalizeAiResult(out, model));
     }
 
     if (path === "/v1/tasks" && request.method === "POST") {
@@ -86,6 +121,38 @@ function isAuthorized(request: Request, env: BrainEnv): boolean {
   const header = request.headers.get("authorization") || "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
   return token.length > 0 && timingSafeEqual(token, expected);
+}
+
+/** Curated Workers AI text models exposed through the proxy. */
+const AI_MODELS: string[] = [
+  "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+  "@cf/meta/llama-3.1-8b-instruct",
+  "@cf/meta/llama-3.2-3b-instruct",
+  "@cf/mistral/mistral-7b-instruct-v0.1",
+  "@cf/google/gemma-3-12b-it",
+  "@cf/qwen/qwen1.5-14b-chat-awq",
+];
+
+/**
+ * Workers AI models return either an OpenAI-shaped object (newer chat models)
+ * or a legacy `{ response: "..." }` / `{ result: ... }` payload. Normalise both
+ * into an OpenAI chat.completion so any OpenAI-compatible client can consume it.
+ */
+function normalizeAiResult(out: unknown, model: string): Record<string, unknown> {
+  const o = (out ?? {}) as Record<string, unknown>;
+  if (Array.isArray(o.choices)) return o;
+  const content =
+    typeof o.response === "string" ? o.response :
+    typeof o.result === "string" ? o.result :
+    typeof o.text === "string" ? o.text : "";
+  return {
+    id: "chatcmpl-" + crypto.randomUUID(),
+    object: "chat.completion",
+    created: Math.floor(Date.now() / 1000),
+    model,
+    choices: [{ index: 0, message: { role: "assistant", content }, finish_reason: "stop" }],
+    usage: typeof o.usage === "object" && o.usage !== null ? o.usage : {},
+  };
 }
 
 function timingSafeEqual(a: string, b: string): boolean {

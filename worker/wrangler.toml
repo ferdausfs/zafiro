@@ -15,6 +15,10 @@ bindings = [{ name = "AGENT_SESSION", class_name = "AgentSession" }]
 tag = "v1"
 new_sqlite_classes = ["AgentSession"]
 
+# Workers AI binding: the worker can run Cloudflare models with no API token.
+[ai]
+binding = "AI"
+
 [vars]
 BRAIN_BASE_URL = "https://openrouter.ai/api/v1"
 BRAIN_MODEL = "z-ai/glm-5.3-flash"
