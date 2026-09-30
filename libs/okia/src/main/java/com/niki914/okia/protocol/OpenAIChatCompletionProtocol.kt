@@ -1,8 +1,6 @@
 package com.niki914.okia.protocol
 
 import com.niki914.okia.ImageLoader
-import com.niki914.okia.error.LLMError
-import com.niki914.okia.error.LLMErrorCode
 import com.niki914.okia.message.AssistantMessage
 import com.niki914.okia.message.ContentBlock
 import com.niki914.okia.message.Message
@@ -106,7 +104,7 @@ class OpenAIChatCompletionProtocol(
                 }
                 emit(
                     ProtocolEvent.Error(
-                        LLMError(LLMErrorCode.Transport, message),
+                        IllegalStateException(message),
                         retryable = true
                     )
                 )
@@ -416,7 +414,6 @@ class OpenAIChatCompletionProtocol(
                     retryable = true
                 )
             )
-            )
             "stop", "end" -> emit(
                 ProtocolEvent.Completed(
                     state.usage,
@@ -442,10 +439,7 @@ class OpenAIChatCompletionProtocol(
 
             else -> emit(
                 ProtocolEvent.Error(
-                    LLMError(
-                        LLMErrorCode.Parse,
-                        "unsupported finish_reason: ${state.finishReason}"
-                    )
+                    IllegalStateException("unsupported finish_reason: ${state.finishReason}")
                 )
             )
         }
