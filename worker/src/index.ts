@@ -46,7 +46,14 @@ export default {
       if (!env.AI) {
         return err(500, "Workers AI binding is not configured (add [ai] to wrangler.toml)");
       }
-      let body: { model?: string; messages?: unknown; max_tokens?: number; temperature?: number };
+      let body: {
+        model?: string;
+        messages?: unknown;
+        max_tokens?: number;
+        temperature?: number;
+        tools?: unknown;
+        tool_choice?: unknown;
+      };
       try {
         body = await request.json() as typeof body;
       } catch {
@@ -59,6 +66,12 @@ export default {
       const input: Record<string, unknown> = { messages: body.messages };
       if (typeof body.max_tokens === "number") input.max_tokens = body.max_tokens;
       if (typeof body.temperature === "number") input.temperature = body.temperature;
+      // function calling: forward OpenAI-style tool definitions + choice so the
+      // agent runtime can drive phone tools through Cloudflare models.
+      if (Array.isArray(body.tools) && body.tools.length > 0) {
+        input.tools = body.tools;
+        input.tool_choice = body.tool_choice ?? "auto";
+      }
       let out: unknown;
       try {
         out = await env.AI.run(model, input);
