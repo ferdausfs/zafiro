@@ -165,14 +165,23 @@ function sanitizeMessages(messages: unknown): unknown {
   });
 }
 
-/** Curated Workers AI text models exposed through the proxy. */
+/**
+ * Workers AI models verified to work through this proxy (live-tested).
+ * The four marked [tools] support function calling, i.e. they can drive the
+ * agent loop; the rest are chat/text only. Any other "@cf/..." id can still be
+ * passed directly to /v1/ai/chat/completions — this list only feeds /v1/ai/models.
+ */
 const AI_MODELS: string[] = [
-  "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
-  "@cf/meta/llama-3.1-8b-instruct",
+  "@cf/meta/llama-3.3-70b-instruct-fp8-fast", // [tools]
+  "@cf/meta/llama-4-scout-17b-16e-instruct",  // [tools]
+  "@cf/meta/llama-3.1-8b-instruct-fast",      // [tools]
+  "@cf/ibm-granite/granite-4.0-h-micro",      // [tools]
   "@cf/meta/llama-3.2-3b-instruct",
+  "@cf/meta/llama-3.2-1b-instruct",
   "@cf/mistral/mistral-7b-instruct-v0.1",
-  "@cf/google/gemma-3-12b-it",
-  "@cf/qwen/qwen1.5-14b-chat-awq",
+  "@cf/qwen/qwq-32b",
+  "@cf/qwen/qwen2.5-coder-32b-instruct",
+  "@cf/deepseek-ai/deepseek-r1-distill-qwen-32b",
 ];
 
 /**
