@@ -16,6 +16,8 @@ tag = "v1"
 new_sqlite_classes = ["AgentSession"]
 
 [vars]
+BRAIN_BASE_URL = "https://openrouter.ai/api/v1"
+BRAIN_MODEL = "z-ai/glm-5.3-flash"
 # Any OpenAI-compatible endpoint works here, e.g.:
 #   https://api.openai.com/v1
 #   https://gateway.ai.cloudflare.com/v1/<account>/<gateway>/openai/v1
