@@ -102,6 +102,7 @@ export default {
     }
 
     if (path === "/v1/trade/memory" && request.method === "GET") {
+      if (!env.TRADE_MEMORY) return err(500, "TradeMemory DO binding is not configured");
       const symbol = url.searchParams.get("symbol") || "";
       const limit = Number(url.searchParams.get("limit") || "20") || 20;
       const stub = env.TRADE_MEMORY.get(env.TRADE_MEMORY.idFromName("global"));
