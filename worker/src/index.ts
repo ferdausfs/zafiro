@@ -21,6 +21,7 @@ import { handleTradeSignal, resolveDueSignals } from "./trade";
 import { handleTradeBacktest } from "./backtest";
 
 export { AgentSession } from "./brain";
+export { TradeMemory } from "./tradeMemory";
 
 const DO_BASE = "https://do.internal";
 
