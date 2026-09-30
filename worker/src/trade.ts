@@ -27,6 +27,26 @@ const SIGNAL_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
+const CURRENCIES = new Set([
+  "USD", "EUR", "GBP", "JPY", "CHF", "AUD", "NZD", "CAD",
+  "CNY", "SEK", "NOK", "SGD", "HKD", "INR", "TRY", "ZAR", "MXN", "XAU", "XAG",
+]);
+
+/**
+ * Forex-friendly symbol normalization: "EURUSD", "EUR/USD", "eurusd" all
+ * become "EURUSD=X" (Yahoo Finance convention). Regular tickers (AAPL,
+ * BTC-USD, ^GSPC) pass through untouched.
+ */
+export function normalizeSymbol(input: string): string {
+  const s = input.toUpperCase().replace(/[\s/]/g, "");
+  if (/^[A-Z]{6}$/.test(s)) {
+    const base = s.slice(0, 3);
+    const quote = s.slice(3);
+    if (CURRENCIES.has(base) && CURRENCIES.has(quote)) return s + "=X";
+  }
+  return input.trim();
+}
+
 export interface Candle {
   t: number;
   o: number;
@@ -185,7 +205,7 @@ function memStub(env: BrainEnv): DurableObjectStub | null {
 
 const DO_BASE = "https://do.internal";
 
-async function memHistory(env: BrainEnv, symbol: string, limit: number): Promise<TradeSignalRecord[]> {
+export async function memHistory(env: BrainEnv, symbol: string, limit: number): Promise<TradeSignalRecord[]> {
   const stub = memStub(env);
   if (!stub) return [];
   try {
@@ -199,7 +219,7 @@ async function memHistory(env: BrainEnv, symbol: string, limit: number): Promise
   }
 }
 
-async function memStats(env: BrainEnv, symbol: string): Promise<Record<string, unknown> | null> {
+export async function memStats(env: BrainEnv, symbol: string): Promise<Record<string, unknown> | null> {
   const stub = memStub(env);
   if (!stub) return null;
   try {
@@ -575,7 +595,7 @@ export function buildMarketBrief(
   return brief;
 }
 
-function buildMemoryContext(
+export function buildMemoryContext(
   history: TradeSignalRecord[],
   stats: Record<string, unknown> | null,
 ): string {
@@ -690,8 +710,9 @@ export async function handleTradeSignal(
     }
   }
   if (symbol.length < 1 || symbol.length > 20) {
-    return err(400, "valid symbol required, e.g. AAPL, BTC-USD, ^GSPC, RELIANCE.NS");
+    return err(400, "valid symbol required, e.g. AAPL, BTC-USD, EURUSD, ^GSPC, RELIANCE.NS");
   }
+  symbol = normalizeSymbol(symbol);
   days = Math.min(Math.max(days, 5), 365);
   const range = rangeFor(days);
 
