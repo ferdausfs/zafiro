@@ -20,8 +20,8 @@ new_sqlite_classes = ["AgentSession"]
 binding = "AI"
 
 [vars]
-BRAIN_BASE_URL = "https://openrouter.ai/api/v1"
-BRAIN_MODEL = "z-ai/glm-5.3-flash"
+BRAIN_BASE_URL = "https://zafiro-cloud-brain.umuhammadiswa.workers.dev/v1/ai"
+BRAIN_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
 # Any OpenAI-compatible endpoint works here, e.g.:
 #   https://api.openai.com/v1
 #   https://gateway.ai.cloudflare.com/v1/<account>/<gateway>/openai/v1
