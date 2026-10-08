@@ -42,7 +42,8 @@ data class SavedLlmConfig(
         if (apiKeyVaultRef.isNotBlank()) {
             TokenVault.value(apiKeyVaultRef)?.takeIf(String::isNotBlank)?.let { return it }
         }
-        return apiKey.takeIf(String::isNotBlank)
+        // trim：粘贴带换行/尾随空白的 key 会产出非法 Authorization 头或远端 401
+        return apiKey.trim().takeIf(String::isNotBlank)
     }
 }
 

@@ -345,7 +345,8 @@ private data object OpenRouterSpec : ProviderSpec {
     override val id: String = "openrouter"
     override val brandName: String = "OpenRouter"
     override val officialEndpoint: String = "https://openrouter.ai/api/v1/chat/completions"
-    override val exampleModelId: String = "auto"
+    // Auto Router 的目录 id 是 openrouter/auto（裸 auto 非 catalog id）
+    override val exampleModelId: String = "openrouter/auto"
     override val allowsCustomEndpointInNewConfig: Boolean = true
     override val defaultProtocol: String = "openai-chat-completions"
     override val iconRes: Int = R.drawable.openrouter
@@ -402,12 +403,16 @@ private data object OpenCodeSpec : ProviderSpec {
 
 private data object OllamaSpec : ProviderSpec {
     override val id: String = "ollama"
-    override val brandName: String = "Ollama"
+    override val brandName: String = "Ollama Cloud"
 
-    // Ollama Cloud 的 OpenAI 兼容端点；本机/自建 Ollama 与任意 OpenAI 兼容网关
+    // Ollama Cloud（ollama.com）官方 OpenAI 兼容端点（2026-10 实测可用：
+    // GET /v1/models 免鉴权返回 18 个 cloud 模型，POST /v1/chat/completions
+    // 走 Bearer API key，见 docs.ollama.com Cloud 文档）；key 在
+    // ollama.com/settings/keys 创建。本机/自建 Ollama 与任意 OpenAI 兼容网关
     // 通过自定义 base URL 接入（allowsCustomEndpointInNewConfig = true）。
+    // 注意 API 模型 id 是目录里的原始名（如 gemma4:31b），不是 CLI 的 -cloud 后缀形态。
     override val officialEndpoint: String = "https://ollama.com/v1/chat/completions"
-    override val exampleModelId: String = "qwen3-coder-480b-cloud"
+    override val exampleModelId: String = "gemma4:31b"
     override val allowsCustomEndpointInNewConfig: Boolean = true
     override val defaultProtocol: String = "openai-chat-completions"
     override val iconRes: Int = R.drawable.ollama

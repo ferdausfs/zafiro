@@ -31,8 +31,14 @@ class CloudflareGatewayTest {
     }
 
     @Test
-    fun slug_customOverridesKnown() {
-        assertEquals("my-slug", CloudflareGateway.providerSlug("openai", " my-slug "))
+    fun slug_customAppliesOnlyToUnknownProviders() {
+        // 已收录 provider 恒用官方 slug（custom slug 不再无差别覆盖——
+        // 覆盖会把品牌配置改写到错误的上游 host）
+        assertEquals("openai", CloudflareGateway.providerSlug("openai", " my-slug "))
+        assertEquals("openrouter", CloudflareGateway.providerSlug("openrouter", "my-slug"))
+        // 未收录 provider：custom slug 生效（本来就不走网关，给了 slug 即显式接入）
+        assertEquals("my-slug", CloudflareGateway.providerSlug("kimi", " my-slug "))
+        assertNull(CloudflareGateway.providerSlug("kimi", " "))
     }
 
     // ----------------------------------------------------- rewriteEndpoint

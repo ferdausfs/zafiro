@@ -3,7 +3,6 @@ package com.niki914.zafiro.app.ui.model
 import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
 import com.niki914.logging.Logger
-import com.niki914.okia.message.ThinkingLevel
 import com.niki914.uikit.base.ComposeMVIViewModel
 import com.niki914.zafiro.app.R
 import com.niki914.zafiro.repo.CloudflareGateway
@@ -337,7 +336,10 @@ class ConfigureViewModel internal constructor(
                 apiKeyInput = "",
                 apiKeyVisible = false,
                 protocolWireId = providerSpec.defaultProtocol,
-                thinkingLevelWire = ThinkingLevel.Default.wireValue,
+                // 新建配置默认 Provider Default（空串 = 不发思考字段）：reasoning_effort
+                // 属于计费敏感参数（high 会显著加价），且部分兼容网关对不支持的
+                // 模型直接报错；用户可在协议区显式选择强度。
+                thinkingLevelWire = "",
                 nameErrorResId = null,
                 endpointErrorResId = null,
                 modelErrorResId = null,
@@ -373,7 +375,8 @@ class ConfigureViewModel internal constructor(
                 apiKeyInput = "",
                 apiKeyVisible = false,
                 protocolWireId = providerSpec.defaultProtocol,
-                thinkingLevelWire = ThinkingLevel.Default.wireValue,
+                // 同 Onboarding：新建默认 Provider Default（不发思考字段）
+                thinkingLevelWire = "",
                 nameErrorResId = null,
                 endpointErrorResId = null,
                 modelErrorResId = null,
@@ -751,7 +754,9 @@ private fun ConfigureUiState.toSavedLlmConfig(): SavedLlmConfig {
         name = configNameInput,
         provider = providerSpec.id,
         endpoint = resolvedEndpoint(),
-        apiKey = apiKeyInput,
+        // trim 与 Custom Provider 路径对齐：粘贴带换行/空白的 key 会导致
+        // Authorization 头非法（OkHttp 对 \n 直接抛异常）或远端 401
+        apiKey = apiKeyInput.trim(),
         apiKeyVaultRef = apiKeyVaultRef,
         model = modelInput,
         protocol = protocolWireId,

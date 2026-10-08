@@ -176,12 +176,26 @@ class ProviderImportViewModel : ComposeMVIViewModel<ProviderImportIntent, Provid
         }
     }
 
-    /** https://host/v1 → https://host/v1/chat/completions（已是完整路径则原样）。 */
+    /**
+     * base URL → 完整 chat/completions 端点：
+     * - 已是完整路径（…/chat/completions）→ 原样
+     * - 末段是版本段（/v1、/v2、/compatible-mode/v1 的 v1）→ 补 /chat/completions
+     * - 裸 host（https://ollama.com）或无版本段 → 补 /v1/chat/completions
+     *   （OpenAI 兼容约定；此前裸 host 被拼成 https://host/chat/completions，
+     *   对 Ollama Cloud 等官方 base 直接 404）
+     * - Ollama Cloud 文档形态（https://ollama.com、…/api、…/api/chat）→ 收敛到 /v1
+     */
     private fun chatCompletionsEndpoint(baseUrl: String): String {
         val trimmed = baseUrl.trim().trimEnd('/')
+        if (trimmed.endsWith("/chat/completions")) return trimmed
+        val versionSegment = Regex("""v\d+[a-z]*$""")
         return when {
-            trimmed.endsWith("/chat/completions") -> trimmed
-            else -> "$trimmed/chat/completions"
+            trimmed.startsWith("https://ollama.com/api") || trimmed == "https://ollama.com" ->
+                "https://ollama.com/v1/chat/completions"
+            versionSegment.containsMatchIn(trimmed.substringAfterLast('/')) ->
+                "$trimmed/chat/completions"
+            else ->
+                "$trimmed/v1/chat/completions"
         }
     }
 

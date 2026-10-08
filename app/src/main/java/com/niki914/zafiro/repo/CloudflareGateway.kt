@@ -36,13 +36,15 @@ object CloudflareGateway {
 
     /**
      * 解析 provider 对应的 gateway slug；不可改写时返回 null。
-     * customSlug 非空时优先（用户显式指定的 slug 拥有最高优先级）。
+     * customSlug 只对「未收录」的 provider 生效（其文档用途：其余 provider 手动
+     * 指定 slug）；已收录 provider 恒用官方 slug——此前 customSlug 会无差别覆盖，
+     * 把 openrouter/ollama 等品牌配置全部改写到错误的上游 host（AI Gateway 按
+     * slug 决定上游，原 URL host 被忽略），表现正是「品牌页失败、Custom 直连成功」。
      */
     fun providerSlug(providerId: String, customSlug: String): String? {
-        val custom = customSlug.trim()
-        if (custom.isNotEmpty()) return custom
         val known = providerSlugs[providerId.trim().lowercase()]
-        return known
+        if (known != null) return known
+        return customSlug.trim().takeIf(String::isNotEmpty)
     }
 
     /**
